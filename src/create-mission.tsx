@@ -1,3 +1,4 @@
+import {PaymentFormat} from './payment-format';
 import {FundingBreakdown} from './mission-experience';
 import {CommunityEditor,draftPolicy,emptyCommunity, type CommunityDraft} from './community';
 import {communityMessage,policyHash,tierForCommunity} from '../shared/community';
@@ -7,19 +8,18 @@ import { t, criterionLabel, useLocale, number as localizedNumber, counted } from
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatEther, formatUnits, parseUnits, Interface, parseEther, ZeroAddress } from 'ethers';
-import { ArrowLeft, ArrowUpRight, Plus, ShieldCheck, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Plus, ShieldCheck, Trash2, Gift, Trophy, Ticket, CheckCircle2, ChevronDown, Coins, LockKeyhole } from 'lucide-react';
 import { useApp } from './state';
-import { categories, defaultMode, paymentModes, paymentRules, paymentRule, requiresXEvidence, socialPostId } from '../shared/model';
+import { categories, defaultMode, paymentModes, paymentRule, requiresXEvidence, socialPostId, sameAddress, shortAddress } from '../shared/model';
 import abi from '../shared/abi.json';
 import { AI_MODEL, AI_VERSION, DEFAULT_RUBRIC, MAX_AI_CRITERIA, parseRubric } from '../shared/ai';
-import { BrandArt } from './brand';
 import { StepTransition, TransitionLink } from './view-transitions';
 
 const steps = ['Basic info', 'Reward', 'Details', 'Review'];
 const num = (value: string | number) => localizedNumber(value);
 
 export default function CreateMission() { useLocale(); 
- const { address, transact, busy, setWalletOpen, auth, config, sign, apiFetch, gasSponsored } = useApp();
+ const { address, transact, busy, setWalletOpen, auth, config, sign, apiFetch, gasSponsored, state } = useApp();
  const navigate = useNavigate();
  const [step, setStep] = useState(0);
  const [community,setCommunity]=useState<CommunityDraft>(emptyCommunity);
@@ -27,8 +27,12 @@ export default function CreateMission() { useLocale();
  const [title, setTitle] = useState('');
  const [description, setDescription] = useState('');
  const [requirements, setRequirements] = useState('');
- const [name, setName] = useState('');
  const [category, setCategory] = useState('Memes');
+ const profile = state?.profiles.find(p => sameAddress(p.address, address));
+ const username = auth?.member?.username || profile?.username;
+ const name = username ? '@' + username.replace(/^@/, '') : shortAddress(address);
+ const modeOptions = [defaultMode(category), 0, ...(config?.aiController ? [5] : []), ...(category === 'Replies' ? [4] : (config?.version || 0) >= 6 ? [6] : [])].filter((v,i,a) => a.indexOf(v) === i);
+ function chooseMode(next: number) { setMode(next); if (next === 6) { setAIReview(false); setSocial(false); } if ([4,5,6].includes(next)) setSlots('3'); else if (Number(days) < 1) setDays('7'); }
  const [mode,setMode]=useState(0); const [targetPost,setTargetPost]=useState(''); const [reviewDays,setReviewDays]=useState('3'); const [workHours,setWorkHours]=useState('24');
  const [asset,setAsset]=useState<RewardAsset>(nativeReward);
  const [tokenInput,setTokenInput]=useState('');const [tokenBalance,setTokenBalance]=useState('');const [checkingToken,setCheckingToken]=useState(false);const [tokenError,setTokenError]=useState('');
@@ -71,8 +75,9 @@ export default function CreateMission() { useLocale();
   if (step===1&&tokenMode&&!asset.address){setError('Check and select a token before continuing.');return;}
   if (step < 3) { changeStep(step + 1); return; }
   try {
+   if (auth && !auth.member?.username) throw new Error('Your X profile is still loading. Please retry shortly.');
    const amount = parseUnits(reward,asset.decimals); const count = Number(slots);
-   if (amount <= 0n || !Number.isInteger(count) || count < 1 || count > ([4,5,6].includes(mode)?20:100) || title.trim().length < 5 || !description.trim() || !requirements.trim() || !name.trim()) throw new Error('Check the brief, creator name, a positive reward, and 1–100 reward slots.');
+   if (amount <= 0n || !Number.isInteger(count) || count < 1 || count > ([4,5,6].includes(mode)?20:100) || title.trim().length < 5 || !description.trim() || !requirements.trim()) throw new Error('Check the brief, a positive reward, and the number of reward slots.');
    if(mode===4&&!socialPostId(targetPost))throw new Error('Use a public X post URL for the raffle.');
    const useAI=needsAI;if(useAI){parseRubric(JSON.stringify(criteria));if(!config?.aiConfigured)throw new Error('AI unavailable.');}
    let communitySummary;
@@ -109,33 +114,33 @@ export default function CreateMission() { useLocale();
    }
   } catch(e) { setError(e instanceof Error&&e.message.length<200?e.message:'Could not publish. Check your brief and reward settings, then retry.'); }
  }
- return <div className="page narrow-page">
+ return <div className="page narrow-page create-page">
   <TransitionLink className="back-link" to="/"><ArrowLeft size={16}/>{t("All missions")}</TransitionLink>
   <div className="page-title"><span className="title-symbol"><Plus size={30}/></span><h1>{t("Ask for a little help.")}</h1><p>{t("A clear brief. A fair reward. Something worth showing up for.")}</p></div>
   {!address ? <div className="empty"><h3>{t("Make yourself part of it.")}</h3><p>{t("Sign in to create a mission and fund its rewards.")}</p><button className="button primary" onClick={() => setWalletOpen(true)}>{auth ? t("Sign in") : t("Connect wallet")}</button></div> : <div className="form-layout">
    <form className="mission-form" onSubmit={submit}>
-    <ol className="wizard-steps" aria-label={t("Mission creation progress")}>{steps.map((label,index) => <li key={label} aria-current={index === step ? 'step' : undefined}><span>0{index+1}</span>{t(label)}</li>)}</ol>
+    <ol className="wizard-steps" aria-label={t("Mission creation progress")}>{steps.map((label,index) => <li key={label} aria-current={index === step ? 'step' : undefined}><span>{index+1}</span>{t(label)}</li>)}</ol>
     <div className="wizard-panels">{steps.map((label, panel) => { const content = <>
      <h2 id={`step-heading-${panel}`} ref={element => { if (element && panel === step) heading.current = element; }} tabIndex={-1}>{t(label)}</h2>
      {panel === 0 && <>
-      <label>{t("Your creator name")}<input required pattern=".*\S.*" maxLength={40} value={name} onChange={e => setName(e.target.value)} placeholder={t("What should we call you?")} autoComplete="nickname"/></label>
+      <div className="creator-identity"><span className="identity-avatar">{profile?.avatarUrl?<img src={profile.avatarUrl} alt="" referrerPolicy="no-referrer"/>:<ShieldCheck size={20}/>}</span><span><small>{t("Publishing as")}</small><strong>{name}</strong></span><span className="identity-connected"><CheckCircle2 size={15}/>{t(username?"Connected through X":"Connected wallet")}</span></div>
       <label>{t("Mission title")}<input required minLength={5} maxLength={100} value={title} onChange={e => setTitle(e.target.value)} placeholder={t("Make a meme for our launch")}/></label>
       <label>{t("Kind of contribution")}<select value={category} onChange={e => {setCategory(e.target.value);setMode(defaultMode(e.target.value));if(Number(days)<1)setDays('7');}}>{categories.slice(1).map(c => <option key={c} value={c}>{t(c)}</option>)}</select></label>
-      {(config?.version||0)>=7&&[0,4,6].includes(mode)&&<p className="inline-note">{t("If Pyth remains unavailable for 7 days after review ends, unspent prizes return to the creator. Anyone can process the refund in batches. Already paid rewards are preserved.")}</p>}
-      <label>{t("Payment format")}<select value={mode} onChange={e=>{setMode(Number(e.target.value));if(Number(e.target.value)===6){setAIReview(false);setSocial(false);}if([4,5,6].includes(Number(e.target.value)))setSlots('3');else if(Number(days)<1)setDays('7');}}>{[defaultMode(category),0,...(config?.aiController?[5]:[]),...(category==='Replies'?[4]:[]),...((config?.version||0)>=6?[6]:[])].filter((v,i,a)=>a.indexOf(v)===i).map(v=><option key={v} value={v} disabled={v===5&&!config?.aiConfigured}>{t(paymentModes[v])}{v===5&&!config?.aiConfigured?t(" · temporarily unavailable"):''}</option>)}</select></label>
-      <p className="payment-note">{t(paymentRule(mode,protectedMode))}</p>
+      <PaymentFormat value={mode} options={modeOptions} aiAvailable={!!config?.aiConfigured} onChange={chooseMode}/>
+      <details className="form-disclosure"><summary><ShieldCheck size={17}/>{t("How rewards work")}<ChevronDown size={17}/></summary><p>{t(paymentRule(mode,protectedMode))}</p>{mode===6&&<p>{t("A raffle is one payment format. Discord, NFT and lists only decide who can enter. Add at least one access requirement in Details for an entry-only raffle.")}</p>}</details>
       {mode===4&&<label>{t("Contest post URL")}<input type="url" required maxLength={300} value={targetPost} onChange={e=>setTargetPost(e.target.value)} placeholder="https://x.com/creator/status/…"/><small>{t("Only direct replies posted after a personal ownership code is issued can enter. Maximum 256 entries; up to 20 equal prizes.")}</small></label>}
      </>}
      {panel === 1 && <>
-      {platformFee>0n&&<p className="inline-note">{t("Platform creation fee")}: <strong>{num(formatEther(platformFee))} MON</strong>. {t("Includes the selected verification service. Changes when you enable X or AI checks.")}<small>{t("Up to 256 entries. Paid repeat checks are limited; no surprise charges.")}</small></p>}<section className="reward-token-picker"><label>{t('Reward currency')}<select value={tokenMode?'token':'MON'} onChange={e=>{if(e.target.value==='MON'){setAsset(nativeReward);setTokenError('');}else{setTokenInput('');setAsset({...nativeReward,source:'nad.fun',symbol:'TOKEN',address:''});}}}><option value="MON">MON</option><option value="token" disabled={(config?.version||0)<4}>{t('nad.fun token')}</option></select></label>{tokenMode&&<><label>{t('nad.fun token URL or contract address')}<input maxLength={300} value={tokenInput} onChange={e=>setTokenInput(e.target.value)} placeholder={config?.chainId===143?"https://nad.fun/tokens/0x…":"https://testnet.nad.fun/tokens/0x…"}/></label><button type="button" className="button secondary" disabled={checkingToken||busy||!tokenInput.trim()} onClick={()=>void checkToken()}>{checkingToken?t('Checking token…'):t('Check token')}</button>{asset.address&&<div className="inline-note"><strong>{asset.name} ({asset.symbol})</strong><p>{t('Your token balance')}: {num(tokenBalance)} {asset.symbol}</p><a href={asset.url} target="_blank" rel="noopener noreferrer">{t('View on nad.fun')}</a><small>{asset.address}</small></div>}{tokenError&&<p role="alert" className="form-error">{t(tokenError)}</p>}<p className="payment-note">{t('Rewards use this token. Gas, Pyth and execution reserves use MON. Token prices and liquidity are not guaranteed.')}</p></>}</section>
+      {platformFee>0n&&<div className="creation-fee"><Coins size={26}/><div><small>{t("Platform creation fee")}</small><strong>{num(formatEther(platformFee))} MON</strong></div><p>{t("Includes the selected verification service. Changes when you enable X or AI checks.")}</p><small>{t("Up to 256 entries. Paid repeat checks are limited; no surprise charges.")}</small></div>}<section className="reward-token-picker"><label>{t('Reward currency')}<select value={tokenMode?'token':'MON'} onChange={e=>{if(e.target.value==='MON'){setAsset(nativeReward);setTokenError('');}else{setTokenInput('');setAsset({...nativeReward,source:'nad.fun',symbol:'TOKEN',address:''});}}}><option value="MON">MON</option><option value="token" disabled={(config?.version||0)<4}>{t('nad.fun token')}</option></select></label>{tokenMode&&<><label>{t('nad.fun token URL or contract address')}<input maxLength={300} value={tokenInput} onChange={e=>setTokenInput(e.target.value)} placeholder={config?.chainId===143?"https://nad.fun/tokens/0x…":"https://testnet.nad.fun/tokens/0x…"}/></label><button type="button" className="button secondary" disabled={checkingToken||busy||!tokenInput.trim()} onClick={()=>void checkToken()}>{checkingToken?t('Checking token…'):t('Check token')}</button>{asset.address&&<div className="inline-note"><strong>{asset.name} ({asset.symbol})</strong><p>{t('Your token balance')}: {num(tokenBalance)} {asset.symbol}</p><a href={asset.url} target="_blank" rel="noopener noreferrer">{t('View on nad.fun')}</a><small>{asset.address}</small></div>}{tokenError&&<p role="alert" className="form-error">{t(tokenError)}</p>}<p className="payment-note">{t('Rewards use this token. Gas, Pyth and execution reserves use MON. Token prices and liquidity are not guaranteed.')}</p></>}</section>
       {config?.chainId!==143&&<label className="checkbox-label"><input type="checkbox" checked={quick} onChange={e=>setQuick(e.target.checked)}/><span>{t("Quick test · every stage is 5 minutes")}<small>{t("Testnet only. Submissions, review and delivery use five-minute windows. Pyth callback timing is external.")}</small></span></label>}
       <div className="form-pair"><label>{t("Reward per contribution")}<span className="input-unit"><input aria-label={t("Reward per contribution")} required inputMode="decimal" type="number" min={formatUnits(1n,asset.decimals)} step={formatUnits(1n,asset.decimals)} value={reward} onChange={e => setReward(e.target.value)}/><span>{asset.symbol}</span></span></label><label>{t("Reward slots")}<input required type="number" min="1" max={[4,5,6].includes(mode)?20:100} step="1" value={slots} onChange={e => setSlots(e.target.value)}/></label></div>
-      <label>{t("Accept submissions for")}<select disabled={quick} value={days} onChange={e => setDays(e.target.value)}>{[...([4,5,6].includes(mode)&&config?.chainId!==143?[1/288,1/24]:[]),1,3,7,14,30].map(d => <option key={d} value={d}>{d<1?d<1/24?t("5 minutes · demo"):t("1 hour"):counted(d,'day',['день','дня','дней'])}</option>)}</select></label>
-      {protectedMode&&<div className="inline-note"><p>{t("Execution reserve")}: 0.3 MON</p>{[0,4,6].includes(mode)&&<p>{t("Pyth reserve (2 × current fee)")}: {pythQuote?formatEther(BigInt(pythQuote)*2n):t("Loading…")} MON</p>}<p>{t("Unused reserves return to the creator. Rewards are separate. The server executes automatically while online; anyone can also trigger settlement.")}</p>{mode===0&&<p>{t("Choose winners before the review deadline. Remaining prizes are drawn randomly among remaining submissions. Contest entries cannot be rejected or expired.")}</p>}{[1,2].includes(mode)&&<p>{t("Delivered reserved work is paid automatically if the creator misses the review deadline.")}</p>}</div>}
+      <label>{t("Accept submissions for")}<select disabled={quick} value={quick?"quick":days} onChange={e => setDays(e.target.value)}>{quick&&<option value="quick">{t("5 minutes · demo")}</option>}{[...([4,5,6].includes(mode)&&config?.chainId!==143?[1/288,1/24]:[]),1,3,7,14,30].map(d => <option key={d} value={d}>{d<1?d<1/24?t("5 minutes · demo"):t("1 hour"):counted(d,'day',['день','дня','дней'])}</option>)}</select></label>
+      {protectedMode&&<div className="reserve-summary"><div><LockKeyhole size={23}/><span><small>{t("Execution reserve")}</small><strong>0.3 MON</strong></span></div>{[0,4,6].includes(mode)&&<div><Ticket size={23}/><span><small>{t("Randomness reserve")}</small><strong title={pythQuote?formatEther(BigInt(pythQuote)*2n)+' MON':undefined}>{pythQuote?new Intl.NumberFormat(undefined,{maximumSignificantDigits:6,roundingMode:'ceil'} as Intl.NumberFormatOptions).format(Number(formatEther(BigInt(pythQuote)*2n))):t("Loading…")} MON</strong></span></div>}<p>{t("Unused reserves return to you. Prize funds stay separate.")}</p></div>}
       <p className="inline-note"><ShieldCheck size={18}/>{t("Prize budget") } {num(budget)} {asset.symbol} {t("when you publish.")}</p>
-      {![4,6].includes(mode)&&<label>{t("Review period after submissions close")}<select disabled={quick} value={reviewDays} onChange={e=>setReviewDays(e.target.value)}>{[1,3,7].map(d=><option key={d} value={d}>{counted(d,"day",["день","дня","дней"])}</option>)}</select></label>}
-      {[1,2].includes(mode)&&<label>{t("Time to deliver after reservation / selection")}<select disabled={quick} value={workHours} onChange={e=>setWorkHours(e.target.value)}>{[1,6,24,72,168].map(h=><option key={h} value={h}>{counted(h,"hour",["час","часа","часов"])}</option>)}</select><small>{t("Delivery must also be before the submission deadline.")}</small></label>}
-      {[4,6].includes(mode)&&<p className="payment-note">{t("Pyth and execution reserves are funded now. After the deadline the draw starts automatically while the server is online. If fewer people enter than prizes, everyone wins once and unused prizes return to you.")}</p>}
+      {![4,6].includes(mode)&&<label>{t("Review period after submissions close")}<select disabled={quick} value={quick?"quick":reviewDays} onChange={e=>setReviewDays(e.target.value)}>{quick&&<option value="quick">{t("5 minutes")}</option>}{[1,3,7].map(d=><option key={d} value={d}>{counted(d,"day",["день","дня","дней"])}</option>)}</select></label>}
+      {[1,2].includes(mode)&&<label>{t("Time to deliver after reservation / selection")}<select disabled={quick} value={quick?"quick":workHours} onChange={e=>setWorkHours(e.target.value)}>{quick&&<option value="quick">{t("5 minutes")}</option>}{[1,6,24,72,168].map(h=><option key={h} value={h}>{counted(h,"hour",["час","часа","часов"])}</option>)}</select><small>{t("Delivery must also be before the submission deadline.")}</small></label>}
+      {protectedMode&&<details className="form-disclosure"><summary><ShieldCheck size={17}/>{t("Reserves, deadlines and refunds")}<ChevronDown size={17}/></summary><p>{t("Unused reserves return to the creator. Rewards are separate. The server executes automatically while online; anyone can also trigger settlement.")}</p>{[0,4,6].includes(mode)&&<p>{t("If Pyth remains unavailable for 7 days after review ends, unspent prizes return to the creator. Anyone can process the refund in batches. Already paid rewards are preserved.")}</p>}{mode===0&&<p>{t("Choose winners before the review deadline. Remaining prizes are drawn randomly among remaining submissions. Contest entries cannot be rejected or expired.")}</p>}{[1,2].includes(mode)&&<p>{t("Delivered reserved work is paid automatically if the creator misses the review deadline.")}</p>}{[4,6].includes(mode)&&<p>{t("Pyth and execution reserves are funded now. After the deadline the draw starts automatically while the server is online. If fewer people enter than prizes, everyone wins once and unused prizes return to you.")}</p>}</details>}
+
      </>}
      {panel === 2 && <>
       <CommunityEditor value={community} onChange={setCommunity}/>
@@ -163,7 +168,7 @@ export default function CreateMission() { useLocale();
     <div className="wizard-actions"><button className="button secondary" type="button" disabled={busy || step === 0} onClick={() => changeStep(step-1)}><ArrowLeft size={17}/>{t("Back")}</button><button className="button primary" disabled={busy || (step>=2 && (!!rubricError||!!admissionError||mode===6&&!admissionPolicy))} type="submit">{step === 3 ? busy ? t("Publishing…") : t("Publish & fund mission") : t("Next")}<ArrowUpRight size={19}/></button></div>
     <p className="form-footnote">{step === 3 ? tokenMode?t("Approve the exact token budget, then publish and fund. MON reserves are separate."):t("One transaction publishes the mission and funds its rewards. Wallet gas is additional.") : t("Your changes stay here as you move between steps. Funding happens only when you publish.")}</p>
    </form>
-   <aside className="funding-preview"><BrandArt className="aside-mascot"/><h3>{t("A little support goes a long way.")}</h3><div className="big-budget">{num(budget)}<span>{asset.symbol}</span></div><dl><div><dt>{t("Per reward")}</dt><dd>{num(reward || 0)} {asset.symbol}</dd></div><div><dt>{t("Reward places")}</dt><dd>{slots || 0}</dd></div></dl><p><ShieldCheck size={18}/>{t(paymentModes[mode])}</p><small>{t(paymentRule(mode,protectedMode))} {t("Terms and budget are fixed when published. No independent jury or dispute resolution in this MVP.")}</small></aside>
+   <aside className="funding-preview"><div className="preview-eyebrow"><span>{t("MISSION REWARDS")}</span><Gift size={27}/></div><h3>{t("A little support goes a long way.")}</h3><div className="big-budget">{num(budget)}<span>{asset.symbol}</span><small>{t("Total prize pool")}</small></div><dl><div><dt><Trophy size={19}/>{t("Per reward")}</dt><dd>{num(reward || 0)} {asset.symbol}</dd></div><div><dt><ShieldCheck size={19}/>{t("Reward places")}</dt><dd>{slots || 0}</dd></div><div><dt><Ticket size={19}/>{t("Payment format")}</dt><dd>{t(paymentModes[mode])}</dd></div></dl><div className="preview-note"><ShieldCheck size={18}/><p>{t([4,6].includes(mode)?"Winners are drawn randomly with Pyth. Access requirements decide who can enter, not who wins.":mode===5?"The fixed AI rubric determines the winners. Your criteria cannot change after funding.":"Rewards are funded upfront. The published rules determine who gets paid.")}</p></div><small>{t("Terms and budget are fixed when published. No independent jury or dispute resolution in this MVP.")}</small></aside>
   </div>}
  </div>;
 }

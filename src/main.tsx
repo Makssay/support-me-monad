@@ -21,6 +21,7 @@ import './payment.css';
 import './experience.css';
 import './ai.css';
 import './i18n.css';
+import './product.css';
 import type { AppConfig } from '../shared/model';
 function Bootstrap() { useLocale(); 
  const [config, setConfig] = useState<AppConfig>(); const [failed, setFailed] = useState(false);

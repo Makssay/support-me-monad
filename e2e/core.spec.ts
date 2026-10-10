@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { HDNodeWallet, JsonRpcProvider, Contract, formatEther, toUtf8String, getBytes } from 'ethers';
 import fs from 'node:fs';
+test.afterEach(async({page})=>{await page.unrouteAll({behavior:'wait'});});
 const artifact = JSON.parse(fs.readFileSync('artifacts/SupportMe.json', 'utf8'));
 const p = new JsonRpcProvider(process.env.QA_RPC_URL || 'http://127.0.0.1:8545', 31337, { batchMaxCount: 1 });
 const phrase = 'test test test test test test test test test test test junk';
@@ -9,6 +10,12 @@ test.afterAll(() => p.destroy());
 test('Two wallets complete the mission, payout, reputation and refund flow', async ({ page, request }) => {
  const initialState=await(await request.get('/api/state')).json();const initialScore=initialState.profiles.find((profile:any)=>profile.address.toLowerCase()===wallets[1].address.toLowerCase())?.score??0;
  let active = 0; let walletSends = 0; const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
+ await page.route('**/api/state',async route=>{
+  const response=await route.fetch();const snapshot=await response.json();
+  snapshot.profiles=snapshot.profiles.filter((profile:any)=>profile.address.toLowerCase()!==wallets[0].address.toLowerCase());
+  snapshot.profiles.push({address:wallets[0].address,name:'Creator QA',username:'creator_qa',xId:'100001',submitted:0,accepted:0,earned:'0',completed:0,acceptanceRate:0,score:0,credits:'0'});
+  await route.fulfill({response,json:snapshot});
+ });
  await page.exposeFunction('localWalletRequest', async ({ method, params = [] }: { method: string; params?: any[] }) => {
   const wallet = wallets[active];
   if (['eth_accounts', 'eth_requestAccounts'].includes(method)) return [wallet.address];
@@ -21,9 +28,18 @@ test('Two wallets complete the mission, payout, reputation and refund flow', asy
  await page.goto('/'); await expect(page.getByRole('heading', { name: 'Make yourself useful.' })).toBeVisible();
  await page.getByRole('button', { name: 'Connect wallet' }).click(); await page.getByRole('button', { name: 'MetaMask' }).click();
  await page.getByRole('link', { name: 'Create mission', exact: true }).first().click();
- await page.getByLabel('Your creator name').fill('Local Creator'); await page.getByLabel('Mission title').fill('Make a useful launch meme');
+ await expect(page.getByLabel('Your creator name')).toHaveCount(0);
+ await expect(page.locator('.creator-identity')).toContainText('@creator_qa');
+ await page.getByLabel('Kind of contribution').selectOption('Replies');
+ await expect(page.getByRole('button',{name:/^Raffle/})).toHaveCount(1);
+ await expect(page.locator('[data-payment-mode="4"]')).toHaveAttribute('aria-pressed','true');
+ await page.getByLabel('Kind of contribution').selectOption('Memes');
+ await expect(page.getByRole('button',{name:/^Raffle/})).toHaveCount(1);
+ await page.getByLabel('Mission title').fill('Make a useful launch meme');
+ await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:'test-results/create-basic-desktop.png',fullPage:true});
  await page.getByRole('button', { name: 'Next', exact: true }).click();
  await page.getByLabel('Reward per contribution', { exact: true }).fill('0.01'); await page.getByLabel('Reward slots', { exact: true }).fill('1');
+ await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:'test-results/create-reward-desktop.png',fullPage:true});
  await page.getByRole('button', { name: 'Next', exact: true }).click();
  await page.getByLabel('The brief', { exact: true }).fill('Create one original meme for our creator launch. Keep it friendly and useful.'); await page.getByLabel('What makes a great contribution?').fill('Original caption, clear concept, public post if published.'); await page.getByLabel('Require a public X / Twitter post link').check();
  await page.getByRole('button', { name: 'Next', exact: true }).click();

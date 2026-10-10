@@ -3,7 +3,7 @@ export const EXPLORER = 'https://testnet.monadscan.com';
 export const PUBLIC_RPC = 'https://testnet-rpc.monad.xyz';
 export const categories = ['All missions', 'Memes', 'Feedback', 'Social content', 'Replies', 'Bug hunting'] as const;
 export type Category = typeof categories[number];
-export const paymentModes = ['Creator choice', 'Paid report slots', 'Selected contributor', 'Bug bounty', 'Raffle', 'AI judged contest', 'Community raffle'] as const;
+export const paymentModes = ['Creator choice', 'Paid report slots', 'Selected contributor', 'Bug bounty', 'Raffle', 'AI judged contest', 'Raffle'] as const;
 export function defaultMode(category: string) { return category === 'Replies' ? 4 : category === 'Feedback' ? 1 : category === 'Social content' ? 2 : category === 'Bug hunting' ? 3 : 0; }
 // Display legacy immutable missions under the closest current category.
 export function normalizeCategory(category: string) { return category === 'Testing' ? 'Feedback' : category === 'Launch support' ? 'Social content' : category; }

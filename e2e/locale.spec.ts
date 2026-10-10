@@ -38,11 +38,11 @@ test('Russian interface preserves drafts and canonical metadata through payout, 
     await page.getByRole('button', { name: 'Подключить кошелёк' }).click();
     await page.getByRole('button', { name: 'MetaMask' }).click();
     await page.goto('/create');
-    await page.getByLabel('Твоё имя как автора').fill('Русский автор');
+    await expect(page.getByLabel('Твоё имя как автора')).toHaveCount(0);
     // This title deliberately matches an interface dictionary key. It must remain author content.
     await page.getByLabel('Название задания').fill('Creator choice');
     await page.getByLabel('Категория задания').selectOption('Feedback');
-    await expect(page.getByLabel('Формат выплат')).toHaveValue('1');
+    await expect(page.locator('[data-payment-mode="1"]')).toHaveAttribute('aria-pressed', 'true');
     await page.getByRole('button', { name: 'English', exact: true }).click();
     await expect(page.getByLabel('Mission title')).toHaveValue('Creator choice');
     await expect(page.getByLabel('Kind of contribution')).toHaveValue('Feedback');
@@ -55,7 +55,7 @@ test('Russian interface preserves drafts and canonical metadata through payout, 
     await page.getByLabel('Описание задания', { exact: true }).fill('Создай полезный мем о нашем запуске. Свой текст и понятная идея.');
     await page.getByLabel('Каким должен быть хороший результат?').fill('Оригинальная идея и понятный текст.');
     await page.getByRole('button', { name: 'Далее', exact: true }).click();
-    await expect(page.getByLabel('Проверка задания')).toContainText('Русский автор · Мемы');
+    await expect(page.getByLabel('Проверка задания')).toContainText(`${wallets[0].address.slice(0,6)}…${wallets[0].address.slice(-4)} · Мемы`);
     await page.setViewportSize({ width: 320, height: 800 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     const formBounds = await page.locator('.mission-form').boundingBox();

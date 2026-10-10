@@ -14,7 +14,7 @@ test('Token mission: exact approval, escrow, submission, payout and profile',asy
  });
  await page.addInitScript(()=>{const listeners:Record<string,Function[]>={};(window as any).ethereum={isMetaMask:true,request:(q:any)=>(window as any).qaTokenWallet(q),on:(e:string,f:Function)=>(listeners[e]||=[]).push(f),removeListener:(e:string,f:Function)=>{listeners[e]=listeners[e]?.filter(v=>v!==f);}};(window as any).switchTokenWallet=(a:string)=>listeners.accountsChanged?.forEach(f=>f([a]));});
  await page.goto('/');await page.getByRole('button',{name:'Connect wallet',exact:true}).click();await page.getByRole('button',{name:'MetaMask',exact:true}).click();
- await page.goto('/create');await page.getByLabel('Your creator name').fill('Token Creator');await page.getByLabel('Mission title').fill('Make an original community meme');await page.getByRole('button',{name:'Next',exact:true}).click();
+ await page.goto('/create');await page.getByLabel('Mission title').fill('Make an original community meme');await page.getByRole('button',{name:'Next',exact:true}).click();
  await page.getByLabel('Reward currency').selectOption('token');
  const tokenAddress=JSON.parse(fs.readFileSync('.data/local-reward-token.json','utf8')).address;
  await page.getByLabel('nad.fun token URL or contract address').fill(tokenAddress);await page.getByRole('button',{name:'Check token',exact:true}).click();await expect(page.getByText('QA reward token (QAR)',{exact:true})).toBeVisible();
