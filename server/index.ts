@@ -11,7 +11,7 @@ import { config, contract, contractAddress, aiControllerAddress, chainId, provid
 import aiRoutes from './ai-routes';
 import communityRoutes from './community';
 import { publicConfig } from './chain';
-import { verificationMessage, sameAddress, safeJson, contributionDefaults } from '../shared/model';
+import { verificationMessage, sameAddress, safeJson, contributionDefaults, missionDefaults, missionEvidence } from '../shared/model';
 import socialRoutes, { socialLookup } from './social-routes';
 import authRoutes, { requireMember, requireMemberWallet } from './auth';
 import { startAutomation } from './automation';
@@ -48,12 +48,13 @@ app.post('/api/contributions/:id/verify', requireMember, rateLimit({ windowMs: 6
     requireMemberWallet(req, signer);
     const c = await contract.contributions(id); const m = await contract.missions(c.missionId);
     if (!sameAddress(signer, m.creator)) { res.status(403).json({ error: 'Only the mission creator can run verification.' }); return; }
-    const existing = verificationFor(id);
+    const missionMeta=safeJson(m.metadata,missionDefaults);
+    const cached = verificationFor(id);const existing=cached?missionEvidence(missionMeta,cached):undefined;
     if (existing?.status === 'verified') { res.json(existing); return; }
     const metadata = safeJson(c.metadata, contributionDefaults);
     const manualOnly=version>=5&&creationFees&&Number(await creationFees.tiers(contractAddress,c.missionId))===0;
     if(manualOnly||!metadata.socialUrl){const result={status:'manual' as const,checkedAt:new Date().toISOString(),postUrl:metadata.socialUrl,note:'Review the work and authorship manually. Automatic X verification was not included.'};saveVerification(id,result);invalidate();res.json(result);return;}
-    await requirePaidService(Number(c.missionId),1);const result = await socialLookup(metadata.socialUrl); saveVerification(id, result); invalidate(); res.json(result);
+    await requirePaidService(Number(c.missionId),1);const result = missionEvidence(safeJson(m.metadata,missionDefaults),await socialLookup(metadata.socialUrl)); saveVerification(id, result); invalidate(); res.json(result);
   } catch { res.status(400).json({ error: 'Could not verify this request. Reconnect the creator wallet and try again.' }); }
 });
 app.use('/api', socialRoutes);

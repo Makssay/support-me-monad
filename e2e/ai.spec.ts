@@ -22,7 +22,7 @@ test('AI contest: frozen rubric, public ranking, organizer blocked, real payout 
  await expect(xLink).not.toBeChecked();await expect(xLink).toBeEnabled();
  await expect(page.getByText('AI assesses the text submitted here. If an X post link is supplied, X API must confirm its text first. Images and external work links require human review.',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Back',exact:true}).click();await page.getByRole('button',{name:'Back',exact:true}).click();
- await page.getByLabel('Kind of contribution').selectOption('Replies');await page.locator('[data-payment-mode=\"5\"]').click();
+ await page.getByLabel('Kind of contribution').selectOption('Replies');await page.getByLabel('Contest post URL').fill('https://x.com/creator/status/10');await page.locator('[data-payment-mode=\"5\"]').click();
  await page.getByRole('button',{name:'Next',exact:true}).click();await page.getByRole('button',{name:'Next',exact:true}).click();
  await expect(xLink).toBeChecked();await expect(xLink).toBeDisabled();
  await expect(page.getByText('X API + AI: X API retrieves the real post; AI assesses only its verified text. If the post cannot be confirmed, AI assessment pauses. Text from the form cannot replace it.',{exact:true})).toBeVisible();

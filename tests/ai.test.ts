@@ -3,6 +3,12 @@ import assert from 'node:assert/strict';
 import { AI_MODEL, AI_VERSION, DEFAULT_RUBRIC, parseRubric } from '../shared/ai';
 import { validateReview, assess, aiUsage, aiBudget } from '../server/ai';
 import { missionDefaults, requiresXEvidence } from '../shared/model';
+test('AI cannot judge a reply from another thread as an eligible contribution',async()=>{
+ let calls=0;const transport=(async()=>{calls++;throw new Error('Must not call provider');}) as typeof fetch;
+ const meta={...missionDefaults,category:'Replies',targetPost:'https://x.com/creator/status/10',title:'Wrong thread regression',aiModel:AI_MODEL,aiVersion:AI_VERSION,aiRubric:DEFAULT_RUBRIC};
+ const result=await assess(meta,'Fabricated form text',{status:'verified',text:'Excellent but unrelated reply',replyTo:'20'},transport,'https://x.com/person/status/123');
+ assert.equal(result.status,'fail');assert.equal(calls,0);
+});
 test('AI X sources require evidence even when the old optional flag is false',()=>{
  for(const category of ['Replies','Social content'])assert.equal(requiresXEvidence({...missionDefaults,category}),true);
  assert.equal(requiresXEvidence(missionDefaults,'https://x.com/person/status/123'),true);

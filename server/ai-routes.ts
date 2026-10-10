@@ -6,7 +6,7 @@ import { contract, contractAddress, chainId, aiController, aiControllerAddress, 
 import { requireMember, requireMemberWallet } from './auth';
 import { assess, AIError, resultFor, saveResult, aiUsage, linkReview, linkedReview } from './ai';
 import { aiJudgeMessage, aiReviewMessage, AI_MODEL, AI_VERSION, type AIResult } from '../shared/ai';
-import { sameAddress } from '../shared/model';
+import { sameAddress, missionEvidence } from '../shared/model';
 import { socialSigner } from './social-signer';
 import { socialLookup } from './social-routes';
 const router=Router();const finalizing=new Map<string,Promise<AIResult>>();
@@ -19,7 +19,7 @@ router.use(['/contributions/:id/ai-review','/missions/:id/ai-finalize'],requireM
 router.post('/contributions/:id/ai-review',async(req,res)=>{try{
  const id=Number(req.params.id);const address=authorized(req,aiReviewMessage(id,contractAddress,chainId,req.body.timestamp));const state=await snapshot();const c=state.contributions.find(c=>c.id===id);const m=state.missions.find(m=>m.id===c?.missionId);
  if(!c||!m||!m.aiReview||(!sameAddress(address,m.creator)&&!sameAddress(address,c.contributor)))throw new AIError('Only the creator or contributor can review this opted-in mission.');
- await requirePaidService(m.id,2);let evidence=verificationFor(id);if(c.socialUrl&&evidence?.status!=='verified'){evidence=await socialLookup(c.socialUrl);saveVerification(id,evidence);}
+ await requirePaidService(m.id,2);let evidence=verificationFor(id);if(c.socialUrl&&evidence?.status!=='verified'){evidence=missionEvidence(m,await socialLookup(c.socialUrl));saveVerification(id,evidence);}
  reserveServiceCheck(m.id,'ai',`contribution:${c.id}`);const review=await assess(m,c.text,evidence,fetch,c.socialUrl);linkReview(`${chainId}:${contractAddress.toLowerCase()}:${id}`,review);res.json(review);
  }catch(e){res.status(400).json({error:e instanceof AIError?e.message:'AI review unavailable. No decision was made.'});}});
 export async function finalizeAIContest(id:number){
@@ -31,7 +31,7 @@ export async function finalizeAIContest(id:number){
  await requirePaidService(id,2);const entries=(await contract.raffleEntries(id)).map(Number) as number[];
  const rankings:AIResult['rankings']=[];
  for(const entry of entries){const c=state.contributions.find(c=>c.id===entry);if(!c)throw new AIError('Entry list changed. Retry after refreshing.');
- let evidence=verificationFor(entry);if(c.socialUrl&&evidence?.status!=='verified'){evidence=await socialLookup(c.socialUrl);saveVerification(entry,evidence);}
+ let evidence=verificationFor(entry);if(c.socialUrl&&evidence?.status!=='verified'){evidence=missionEvidence(m,await socialLookup(c.socialUrl));saveVerification(entry,evidence);}
  reserveServiceCheck(m.id,'ai',`contribution:${c.id}`);const review=await assess(m,c.text,evidence,fetch,c.socialUrl);
  linkReview(`${chainId}:${contractAddress.toLowerCase()}:${entry}`,review);
  if(sameAddress(c.contributor,m.creator))rankings.push({contributionId:entry,review:{...review,status:'fail',reason:'The organizer wallet is excluded from prizes.',score:0}});else rankings.push({contributionId:entry,review});

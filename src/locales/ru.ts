@@ -869,4 +869,7 @@ export const ru: Record<string, string> = {
   "Your linked X account does not have the required blue checkmark.": "У твоего привязанного X-аккаунта нет необходимой синей галочки.",
   "X checkmark verification is unavailable. Retry later; no eligibility decision was made.": "Проверка галочки X временно недоступна. Повтори позже; решение о допуске не принято.",
   "Invalid X checkmark requirement.": "Некорректное условие проверки галочки X.",
+  "Use a public X post URL for the reply task.": "Укажи ссылку на публичный пост X, на который нужны реплаи.",
+  "X API checks that the contribution is a direct reply to this post. The payment format decides who receives a reward.": "X API проверяет, что работа — прямой реплай на этот пост. Формат выплат определяет, кто получает награду.",
+  "This must be a direct reply to the requested post. Quotes and replies to other comments do not qualify.": "Нужен прямой реплай на указанный пост. Цитаты и ответы на другие комментарии не подходят.",
 };

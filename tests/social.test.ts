@@ -8,6 +8,15 @@ test('API confirmation exposes only selected evidence', async () => { const mock
 test('API errors and mismatched post IDs never verify', async () => { const missing = (async () => new Response('', { status: 404 })) as typeof fetch; assert.equal((await verifySocial(url, 'test-key', missing)).status, 'not_found'); const fail = (async () => { throw new Error('API key in provider error'); }) as typeof fetch; const result = await verifySocial(url, 'test-key', fail); assert.equal(result.status, 'unavailable'); assert.equal(result.note.includes('key'), false); const mismatch = (async () => new Response(JSON.stringify({ id_str: '456', user: { screen_name: 'alice' }, full_text: 'Post' }))) as typeof fetch; assert.equal((await verifySocial(url, 'test-key', mismatch)).status, 'unavailable'); });
 
 import { replyEligibility } from '../server/social';
+import {missionEvidence,missionDefaults} from '../shared/model';
+test('Reply evidence is scoped to the requested thread independently of reward format',()=>{
+ const meta={...missionDefaults,category:'Replies',targetPost:'https://x.com/creator/status/10'};
+ const evidence={status:'verified' as const,checkedAt:'',note:'Public post',text:'Useful reply',replyTo:'10'};
+ assert.equal(missionEvidence(meta,evidence).status,'verified');
+ for(const replyTo of ['11',undefined])assert.equal(missionEvidence(meta,{...evidence,replyTo}).status,'unsupported');
+ assert.equal(evidence.status,'verified'); // Do not contaminate the global provider cache.
+ assert.equal(missionEvidence({...meta,category:'Memes'},{...evidence,replyTo:'11'}).status,'verified');
+});
 const target={status:'verified' as const,checkedAt:'',postUrl:'https://x.com/creator/status/10',authorId:'99',text:'Original'};
 const reply={status:'verified' as const,checkedAt:'',postUrl:url,authorId:'1',replyTo:'10',text:'Useful response SM-code',postedAt:'2026-10-08T12:00:00Z',note:''};
 const original={...target,note:''};
