@@ -1,0 +1,32 @@
+.language-toggle{display:inline-flex;flex-shrink:0;padding:3px;gap:2px;border:1px solid #51365f;border-radius:8px;background:#17101f}
+.language-toggle button{min-width:32px;min-height:32px;border:0;border-radius:5px;background:transparent;color:#baa6cd;font:700 10px/1 'DM Sans',sans-serif;cursor:pointer}
+.language-toggle button[aria-pressed=true]{background:#7350c4;color:#fff}
+.language-toggle button:hover{color:#fff}
+.language-toggle button:focus-visible{outline:2px solid #dec5ff;outline-offset:2px}
+html[lang=ru] body{font-family:'Segoe UI',Arial,sans-serif}
+html[lang=ru] h1,html[lang=ru] h2,html[lang=ru] h3{font-family:'Segoe UI',Arial,sans-serif;letter-spacing:-.035em}
+html[lang=ru] .hero h1{letter-spacing:-.055em}
+html[lang=ru] .culture-poster>strong{font-family:'Segoe UI',Arial,sans-serif;font-size:44px;white-space:pre-line}
+html[lang=ru] .culture-poster>small{font-size:7px;letter-spacing:.2px}
+html[lang=ru] .funding-preview:before{content:'НАГРАДЫ ЗА ЗАДАНИЕ'}
+html[lang=ru] .button{white-space:normal}
+html[lang=ru] .row-meta{flex-wrap:wrap}
+html[lang=ru] .feed-page .row-reward small{max-width:100px}
+html[lang=ru] .signal-badge span{max-width:120px}
+html[lang=ru] .wizard-panel[data-active=false]{display:none}
+@media(max-width:680px){html[lang=ru] .wizard-actions{display:grid;grid-template-columns:1fr 1.65fr;gap:8px}html[lang=ru] .wizard-actions .button{min-width:0;width:100%;padding:12px 7px;font-size:12px;gap:7px}html[lang=ru] .wizard-actions .button svg{width:16px}}
+@media(max-width:1200px){html[lang=ru] .nav.desktop-nav{display:none}html[lang=ru] .mobile-toggle{display:inline-flex}}
+@media(min-width:901px) and (max-width:1200px){html[lang=ru] .nav.open.mobile-nav{display:flex}}
+@media(max-width:680px){.topbar{padding:0 12px}.header-actions{gap:7px}.language-toggle{padding:2px}.language-toggle button{min-width:28px;min-height:34px}.wallet-button{max-width:110px}.wordmark{font-size:21px;gap:5px}.wordmark img{width:25px;height:25px}html[lang=ru] .culture-poster>strong{font-size:29px}html[lang=ru] .culture-poster>small{font-size:5px}html[lang=ru] .wizard-steps{gap:8px}html[lang=ru] .wizard-steps li{font-size:10px}html[lang=ru] .reward-panel .button{width:100%}html[lang=ru] .hero h1{font-size:clamp(40px,12vw,65px)}}
+@media(max-width:370px){.topbar{gap:4px;padding:0 8px}.wordmark{font-size:18px}.wordmark img{width:22px;height:22px}.header-actions{gap:4px}.wallet-button{max-width:85px;font-size:10px;padding:8px}.mobile-toggle{width:29px}.language-toggle button{min-width:25px;min-height:34px}}
+
+/* Rubric controls accommodate ten criteria and long translated labels. */
+.criterion-row { display:grid; grid-template-columns:minmax(0,1fr) 120px 36px; gap:16px; align-items:start; margin:20px 0; }
+.criterion-row label { min-width:0; }
+.criterion-row .criterion-remove { margin-top:29px; color:var(--muted); }
+.rubric-toolbar { display:flex; gap:16px; align-items:center; justify-content:space-between; margin:20px 0; }
+.rubric-toolbar > span { font-size:12px; white-space:nowrap; }
+.rubric-total { display:flex; flex-direction:column; gap:6px; padding:14px 0; margin-bottom:12px; border-top:1px solid #443352; font-size:13px; }
+.rubric-total.invalid strong { color:#ffb3a8; }
+.rubric-total.valid strong { color:#a9e5c3; }
+@media(max-width:600px) { .criterion-row { grid-template-columns:minmax(0,1fr) 82px 30px; gap:8px; } .rubric-toolbar { gap:8px; } .rubric-toolbar .button { padding:10px; font-size:12px; } }

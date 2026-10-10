@@ -1,0 +1,10 @@
+[profile.default]
+src = "contracts"
+test = "contract-test"
+out = "out"
+solc_version = "0.8.28"
+evm_version = "paris"
+optimizer = true
+optimizer_runs = 1
+via_ir = true
+fuzz.runs = 256

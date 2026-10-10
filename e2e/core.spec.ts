@@ -1,0 +1,58 @@
+import { test, expect } from '@playwright/test';
+import { HDNodeWallet, JsonRpcProvider, Contract, formatEther, toUtf8String, getBytes } from 'ethers';
+import fs from 'node:fs';
+const artifact = JSON.parse(fs.readFileSync('artifacts/SupportMe.json', 'utf8'));
+const p = new JsonRpcProvider(process.env.QA_RPC_URL || 'http://127.0.0.1:8545', 31337, { batchMaxCount: 1 });
+const phrase = 'test test test test test test test test test test test junk';
+const wallets = [0, 1].map(i => HDNodeWallet.fromPhrase(phrase, undefined, `m/44'/60'/0'/0/${i}`).connect(p));
+test.afterAll(() => p.destroy());
+test('Two wallets complete the mission, payout, reputation and refund flow', async ({ page, request }) => {
+ const initialState=await(await request.get('/api/state')).json();const initialScore=initialState.profiles.find((profile:any)=>profile.address.toLowerCase()===wallets[1].address.toLowerCase())?.score??0;
+ let active = 0; let walletSends = 0; const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
+ await page.exposeFunction('localWalletRequest', async ({ method, params = [] }: { method: string; params?: any[] }) => {
+  const wallet = wallets[active];
+  if (['eth_accounts', 'eth_requestAccounts'].includes(method)) return [wallet.address];
+  if (method === 'wallet_switchEthereumChain') return null;
+  if (method === 'personal_sign') return wallet.signMessage(getBytes(params[0]));
+  if (method === 'eth_sendTransaction') { walletSends++; const { from, gas, ...tx } = params[0]; void from; if (gas) tx.gasLimit = gas; return (await wallet.sendTransaction(tx)).hash; }
+  return p.send(method, params);
+ });
+ await page.addInitScript(() => { const listeners: Record<string, Array<(...a: any[]) => void>> = {}; (window as any).ethereum = { isMetaMask: true, request: (a: unknown) => (window as any).localWalletRequest(a), on: (e: string, f: (...a: any[]) => void) => (listeners[e] ||= []).push(f), removeListener: (e: string, f: (...a: any[]) => void) => { listeners[e] = listeners[e]?.filter(x => x !== f); } }; (window as any).switchLocalWallet = (address: string) => listeners.accountsChanged?.forEach(f => f([address])); });
+ await page.goto('/'); await expect(page.getByRole('heading', { name: 'Make yourself useful.' })).toBeVisible();
+ await page.getByRole('button', { name: 'Connect wallet' }).click(); await page.getByRole('button', { name: 'MetaMask' }).click();
+ await page.getByRole('link', { name: 'Create mission', exact: true }).first().click();
+ await page.getByLabel('Your creator name').fill('Local Creator'); await page.getByLabel('Mission title').fill('Make a useful launch meme');
+ await page.getByRole('button', { name: 'Next', exact: true }).click();
+ await page.getByLabel('Reward per contribution', { exact: true }).fill('0.01'); await page.getByLabel('Reward slots', { exact: true }).fill('1');
+ await page.getByRole('button', { name: 'Next', exact: true }).click();
+ await page.getByLabel('The brief', { exact: true }).fill('Create one original meme for our creator launch. Keep it friendly and useful.'); await page.getByLabel('What makes a great contribution?').fill('Original caption, clear concept, public post if published.'); await page.getByLabel('Require a public X / Twitter post link').check();
+ await page.getByRole('button', { name: 'Next', exact: true }).click();
+ await expect(page.locator('.mission-review')).toContainText('0.5 MON');await expect(page.getByRole('region',{name:'Your payment breakdown'})).toBeVisible();await expect(page.getByText('Total due now',{exact:true})).toBeVisible();
+ await page.setViewportSize({ width: 390, height: 844 }); expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true); await page.screenshot({ path: 'test-results/create-mobile.png', fullPage: true }); await page.setViewportSize({ width: 1440, height: 1000 });
+ const sendsBeforePublish = walletSends; let refreshHints=0; await page.route('**/api/refresh', route => ++refreshHints===1?route.abort('failed'):route.continue(), {times:2});
+ await page.getByRole('button', { name: 'Publish & fund mission' }).click(); await expect(page).toHaveURL(/\/mission\/\d+$/); const missionUrl = page.url(); expect(walletSends).toBe(sendsBeforePublish+1); expect(refreshHints).toBe(2);
+ await expect(page.getByRole('heading', { name: 'Make a useful launch meme', exact: true })).toBeVisible();
+ active = 1; await page.evaluate(a => (window as any).switchLocalWallet(a), wallets[1].address);
+ await page.getByRole('link', { name: 'I can help' }).click(); await page.getByLabel('Your name', { exact: true }).fill('Local Contributor'); await page.getByLabel('Your contribution', { exact: true }).fill('An original meme about a creator receiving useful help from the community. Caption: small acts, big energy.'); await page.getByLabel('Social post or work link (required)').fill('https://x.com/alice/status/1234567890123456789');
+ await expect(page.getByRole('status').filter({hasText:'Draft saved on this device.'})).toBeVisible();await page.reload();await expect(page.getByLabel('Your contribution',{exact:true})).toHaveValue('An original meme about a creator receiving useful help from the community. Caption: small acts, big energy.');await expect(page.getByLabel('Your name',{exact:true})).toHaveValue('Local Contributor');await expect(page.getByLabel('I understand this payment agreement.',{exact:false})).not.toBeChecked();
+ await page.setViewportSize({ width: 390, height: 844 }); expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true); await page.screenshot({ path: 'test-results/submit-mobile.png', fullPage: true }); await page.setViewportSize({ width: 1440, height: 1000 });
+ await page.getByLabel('I understand this payment agreement.', {exact:false}).check();
+ await page.getByRole('button', { name: 'Submit contribution', exact: true }).click(); await expect(page).toHaveURL(missionUrl); await expect(page.getByText('Local Contributor', { exact: true }).first()).toBeVisible(); await expect(page.getByRole('article').getByText('Awaiting review', { exact: true })).toBeVisible();await expect(page.getByRole('link',{name:'View your registered entry',exact:true})).toBeVisible();expect(await page.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith('support.contribution.v1:')).length)).toBe(0);
+ active = 0; await page.evaluate(a => (window as any).switchLocalWallet(a), wallets[0].address); await page.getByRole('link', { name: 'My missions', exact: true }).click(); await expect(page.locator('.pending-row')).toContainText('Local Contributor'); await page.setViewportSize({ width: 390, height: 844 }); expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true); await page.screenshot({ path: 'test-results/dashboard-mobile.png', fullPage: true }); await page.setViewportSize({ width: 1440, height: 1000 }); await page.locator('.pending-row').click(); await page.getByRole('button', { name: 'Verify social post', exact: true }).click(); await expect(page.getByText('The post is missing or private.', { exact: false })).toBeVisible();
+ const before = BigInt(await p.send('eth_getBalance', [wallets[1].address, 'latest']));
+ const payButton = page.getByRole('button', { name: 'Approve & pay 0.01 MON', exact: true }); await expect(payButton).toBeDisabled(); await page.getByLabel('I checked the work and authorship').check(); await payButton.click(); await expect(page.getByText('0.01 MON paid on Monad', { exact: true })).toBeVisible();
+ const after = BigInt(await p.send('eth_getBalance', [wallets[1].address, 'latest'])); expect(formatEther(after - before)).toBe('0.01'); await expect(page.getByRole('link', { name: 'Payout receipt' })).toHaveAttribute('href', /0x[0-9a-f]{64}$/);
+ await page.getByRole('link', { name: 'Local Contributor' }).click(); await expect(page.getByRole('heading', { name: 'Local Contributor', exact: true })).toBeVisible(); await expect(page.locator('.signal-badge strong')).toHaveText(String(initialScore+15)); await expect(page.locator('.profile-stats').getByText('0.01', { exact: false })).toBeVisible();
+ await page.screenshot({ path: 'test-results/profile-desktop.png', fullPage: true });
+ await page.goto('/activity'); await expect(page.locator('.leaderboard-row').first()).toContainText('Local Contributor');
+ await page.goto(missionUrl); await page.getByRole('button', { name: 'Close & refund remaining MON', exact: true }).click(); await page.getByRole('button', { name: 'Confirm close & refund', exact: true }).click(); await expect(page.getByText('Closed', { exact: true })).toBeVisible();await expect(page.getByRole('region',{name:'Public result'})).toBeVisible();
+ const deployment = JSON.parse(fs.readFileSync('.data/local-deployment.json', 'utf8')); const c = new Contract(deployment.address, artifact.abi, p); const missionId = Number(missionUrl.split('/').pop()); expect((await c.missions(missionId)).remaining).toBe(0n); expect((await c.missions(missionId)).closed).toBe(true); expect((await c.reputation(wallets[1].address)).accepted).toBeGreaterThanOrEqual(1n); const stateResponse = await request.get('/api/state'); const latestState = await stateResponse.json(); const payoutHash = latestState.contributions[0].payoutTx; expect((await p.getTransactionReceipt(payoutHash))?.status).toBe(1);
+ const unauthorized = await request.post('/api/contributions/1/verify', { data: { timestamp: Date.now(), signature: '0x00' } }); expect(unauthorized.status()).toBe(400);
+ const forbidden = await request.post('/api/rpc', { data: { jsonrpc: '2.0', id: 1, method: 'eth_sendRawTransaction', params: ['0x'] } }); expect((await forbidden.json()).error.code).toBe(-32601);
+ await page.goto('/'); await page.getByLabel('Include ended').check(); await page.screenshot({ path: 'test-results/feed-desktop.png', fullPage: true });
+ await page.setViewportSize({ width: 390, height: 844 }); await page.screenshot({ path: 'test-results/feed-mobile.png', fullPage: true }); expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+ await page.goto(missionUrl); expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true); await page.screenshot({ path: 'test-results/mission-mobile.png', fullPage: true });
+ await page.goto(`/profile/${wallets[1].address}`); expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true); await page.screenshot({ path: 'test-results/profile-mobile.png', fullPage: true });
+ expect(errors).toEqual([]);
+});
+

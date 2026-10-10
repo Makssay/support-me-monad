@@ -1,0 +1,12 @@
+import fs from 'node:fs';
+import { Contract } from 'ethers';
+import { checkedProvider, safeFailure } from './env';
+import ledgerABI from '../shared/abi.json';
+try{
+ const d=JSON.parse(fs.readFileSync('ai-deployment.json','utf8'));const artifact=JSON.parse(fs.readFileSync('artifacts/AIContestController.json','utf8'));const p=await checkedProvider();const controller=new Contract(d.address,artifact.abi,p);const runtime=await p.getCode(d.address);
+ const normalize=(code:string)=>{let bytes=code.slice(2);for(const refs of Object.values(artifact.immutableReferences) as any[])for(const {start,length}of refs)bytes=bytes.slice(0,start*2)+'0'.repeat(length*2)+bytes.slice((start+length)*2);return bytes;};
+ const proof={chainId:Number((await p.getNetwork()).chainId),controller:d.address,ledger:await controller.ledger(),verifier:await controller.verifier(),runtimeMatches:normalize(runtime)===normalize(artifact.deployedBytecode),deploymentConfirmed:(await p.getTransactionReceipt(d.transactionHash))?.status===1};if(!proof.runtimeMatches||!proof.deploymentConfirmed||proof.ledger.toLowerCase()!==d.ledger.toLowerCase()||proof.verifier.toLowerCase()!==d.verifier.toLowerCase())throw new Error();
+ let manualOverrideBlocked=false;if(fs.existsSync('ai-demo-proof.json')&&JSON.parse(fs.readFileSync('ai-demo-proof.json','utf8')).controller===d.address){const demo=JSON.parse(fs.readFileSync('ai-demo-proof.json','utf8'));if(demo.controller!==d.address)throw new Error();const ledger=new Contract(d.ledger,ledgerABI,p);try{await ledger.approveContribution.staticCall(demo.winners[0],{from:demo.creator});}catch(e){manualOverrideBlocked=(e as any).code==='CALL_EXCEPTION'&&(e as any).reason==='Creator only';}if(!manualOverrideBlocked)throw new Error();}
+ fs.writeFileSync('ai-chain-check.json',JSON.stringify({...proof,manualOverrideBlocked},null,2));console.log('AI deployed runtime, infrastructure and receipt verified.',manualOverrideBlocked?'Live manual override rejection verified.':'Manual override covered by the contract suite.');p.destroy();
+ const source=await fetch(`https://sourcify.dev/server/v2/contract/${d.chainId}/${d.address}`,{signal:AbortSignal.timeout(20000)});if(source.ok){const result=await source.json();fs.writeFileSync('ai-source-verification.json',JSON.stringify(result,null,2));console.log('AI source match:',result.match);}else console.log('Source verification is pending.');
+}catch{safeFailure('AI chain check');}

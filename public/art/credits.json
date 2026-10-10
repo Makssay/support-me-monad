@@ -1,0 +1,13 @@
+{
+  "model": "bytedance-seed/seedream-4.5",
+  "totalCostUsd": 0.24,
+  "assets": [
+    "hero",
+    "memes",
+    "feedback",
+    "testing",
+    "social",
+    "launch"
+  ],
+  "generatedFor": "Support Me original comic mascot"
+}

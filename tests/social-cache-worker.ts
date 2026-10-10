@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { verifySocial,lookupUsage } from '../server/social';
+import { checkXBlue } from '../server/x-checkmark';
+let calls=0;
+globalThis.fetch=(async(url:any)=>{calls++;await new Promise(r=>setTimeout(r,20));return new Response(JSON.stringify(String(url).includes('users-by-ids')?{users:[{id_str:'1',verified:true}]}:{id_str:'123',user:{id_str:'1',screen_name:'alice'},full_text:'Public reply'}));}) as typeof fetch;
+const results=await Promise.all(Array.from({length:8},()=>verifySocial('https://x.com/alice/status/123','fixture')));
+assert.equal(calls,1);assert.ok(results.every(r=>r.status==='verified'));
+await verifySocial('https://twitter.com/other/status/123','fixture');assert.equal(calls,1);
+const profiles=await Promise.all(Array.from({length:8},()=>checkXBlue('1','fixture')));assert.equal(calls,2);assert.ok(profiles.every(r=>r.status==='verified'));await checkXBlue('1','fixture');assert.equal(calls,2);
+process.env.SOCIAL_LOOKUP_DAILY_LIMIT='2';const blocked=await verifySocial('https://x.com/alice/status/124','fixture');assert.equal(blocked.status,'unavailable');assert.equal((await checkXBlue('2','fixture')).status,'unavailable');assert.equal(calls,2);assert.equal(lookupUsage().total,2);
+console.log('Cache, concurrent deduplication and hard budget cap passed with fake transport.');

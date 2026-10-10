@@ -1,0 +1,9 @@
+.ai-policy { margin: 24px 0; padding: 24px 0; border-block: 1px solid var(--line); display: grid; gap: 12px; min-width: 0; }
+.ai-policy > .pill { justify-self: start; display: inline-flex; gap: 7px; }
+.ai-policy p { overflow-wrap: anywhere; font-size: 13px; }
+.ai-policy small { color: var(--muted); }
+.ai-verdict { margin: 16px 0; padding-left: 16px; border-left: 2px solid #8365ff; display: grid; gap: 6px; min-width: 0; }
+.ai-verdict strong { display: flex; gap: 8px; align-items: center; font-size: 13px; color: #bdaeff; }
+.ai-verdict p { font-size: 13px; overflow-wrap: anywhere; }
+.ai-verdict small { color: var(--muted); font-size: 11px; }
+@media(max-width:680px) { .ai-policy { padding-block: 20px; } .ai-policy .form-pair { grid-template-columns: minmax(0,1fr) 76px; } .ai-policy input { min-width: 0; width: 100%; } }

@@ -1,0 +1,13 @@
+.payment-agreement,.creator-record,.raffle-progress,.reservation-panel,.reply-instructions{padding:22px 0;border-block:1px solid #493055;margin:20px 0;color:#e4d9ef;}
+.payment-agreement h3,.creator-record h3,.raffle-progress h3,.reservation-panel h3,.reply-instructions h3{margin:12px 0;font-size:20px;}
+.payment-agreement p,.payment-note,.raffle-progress p,.reservation-panel p,.reply-instructions p{font-size:14px;line-height:1.65;max-width:65ch;}
+.payment-agreement small,.creator-record small,.reply-instructions small,.reservation-panel small{display:block;color:#bbaaca;line-height:1.6;font-size:12px;}
+.creator-record>div{display:flex;flex-wrap:wrap;gap:10px 22px;margin-bottom:12px;font-size:13px;}.creator-record strong{color:#fff;}
+.ownership-code{display:block;padding:16px;background:#291738;color:#e1ccff;font-size:20px;overflow-wrap:anywhere;margin:15px 0;}
+.public-seed{display:block;overflow-wrap:anywhere;margin:14px 0;font-size:12px;}
+.raffle-progress .text-link{display:inline-flex;margin-right:15px;margin-bottom:12px;}
+.reply-instructions .button{margin:10px 0 14px;}.rejection-reason{padding:15px;border-left:3px solid #a880ff;background:#24152c;}.rejection-reason p{font-size:14px;line-height:1.6;}
+.review-actions label:not(.review-checkbox){display:block;width:100%;margin:12px 0;font-size:13px;}.review-actions input:not([type=checkbox]),.review-actions textarea{display:block;width:100%;margin-top:8px;}.review-actions small{display:block;line-height:1.5;color:#bbaaca;}
+@media(max-width:680px){.payment-agreement,.creator-record,.raffle-progress,.reservation-panel,.reply-instructions{padding:18px 0;}.contribution-footer{flex-wrap:wrap;overflow-wrap:anywhere;}.contribution-footer span{font-size:11px;}}
+
+.inline-note.safety-note{display:block}.safety-note h3{margin-bottom:10px}.safety-note p+p{margin-top:10px}.safety-note .button,.safety-note .text-link{margin-top:12px;max-width:100%;white-space:normal}

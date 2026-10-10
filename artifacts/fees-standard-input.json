@@ -1,0 +1,26 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "CreationFees.sol": {
+      "content": "// SPDX-License-Identifier: MIT\r\npragma solidity 0.8.28;\r\n/// Creation fees only. Holds no prize funds or automation reserves.\r\ncontract CreationFees {\r\n address public immutable treasury;\r\n mapping(address=>mapping(uint256=>uint8)) public tiers;\r\n mapping(address=>mapping(uint256=>uint256)) public paid;\r\n event CreationFeePaid(address indexed escrow,uint256 indexed missionId,uint8 tier,uint256 amount);\r\n constructor(address treasury_){require(treasury_!=address(0));treasury=treasury_;}\r\n function quote(uint8 tier) public view returns(uint256){require(tier<3);uint256 scale=(block.chainid==10143||block.chainid==31337)?100:1;return (tier==0?20 ether:tier==1?50 ether:200 ether)/scale;}\r\n function collect(uint256 id,uint8 tier) external payable {require(paid[msg.sender][id]==0&&msg.value==quote(tier));tiers[msg.sender][id]=tier;paid[msg.sender][id]=msg.value;emit CreationFeePaid(msg.sender,id,tier,msg.value);}\r\n function withdraw(address payable recipient,uint256 amount) external {require(msg.sender==treasury&&recipient!=address(0));(bool ok,)=recipient.call{value:amount}(\"\");require(ok);}\r\n}\r\n"
+    }
+  },
+  "settings": {
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "evmVersion": "paris",
+    "outputSelection": {
+      "*": {
+        "*": [
+          "abi",
+          "evm.bytecode.object",
+          "evm.deployedBytecode.object",
+          "evm.deployedBytecode.immutableReferences",
+          "metadata"
+        ]
+      }
+    }
+  }
+}

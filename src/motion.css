@@ -1,0 +1,13 @@
+/* Only the currently selected tab is mounted: no ghost rows or delayed clicks. */
+.activity-panel { opacity: 1; transition: opacity 140ms cubic-bezier(.22,1,.36,1); }
+@starting-style { .activity-panel { opacity: 0; } }
+.payout-check { display: inline-flex; flex: 0 0 auto; }
+.mobile-nav { display: none; transform-origin: top right; }
+.wallet-presence[data-open="false"] .modal-backdrop { pointer-events: none; }
+@media (max-width: 900px) {
+ .nav.desktop-nav { display: none; }
+ .nav.open.mobile-nav { display: flex; }
+}
+@media (prefers-reduced-motion: reduce) {
+ .activity-panel { transition: opacity 80ms cubic-bezier(.22,1,.36,1) !important; }
+}

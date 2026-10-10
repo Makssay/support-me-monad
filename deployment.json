@@ -1,0 +1,20 @@
+{
+  "version": 8,
+  "communityGate": "0x04f3833786753fc630b3F8Aa4C7F9cA11Ed2A1DE",
+  "creationFees": "0x5bE91CA86A64cf7d1D36f02BFE0a1f18E486903d",
+  "feeDeploymentTx": "0xb9bd0e7e87eaba0516714b32d16ccd26af625129dbfd8e3a3dd62313ebcb35c9",
+  "platformTreasury": "0x2937416b9e66E0Af149f9864d70B5500f1844489",
+  "legacyAddress": "0xcB43E4C1d980c4a96CEFb494dC5aa87b42b81F1f",
+  "entropy": "0x825c0390f379C631f3Cf11A82a37D20BddF93c07",
+  "verifier": "0xB990f54020E22C469655339eC05C68cf29D7Eb04",
+  "address": "0x3573d0a55bA41c4405eE01b2A0172820CbfA7476",
+  "chainId": 10143,
+  "block": 69883029,
+  "transactionHash": "0x5b7907d3f9d2405987712bc51de42cbb6c853307f5e7a81714875941c4967614",
+  "deployer": "0x2937416b9e66E0Af149f9864d70B5500f1844489",
+  "compiler": "0.8.28",
+  "evmVersion": "paris",
+  "runtimeVerified": true,
+  "explorer": "https://testnet.monadscan.com",
+  "gasCostMON": "0.910443024"
+}

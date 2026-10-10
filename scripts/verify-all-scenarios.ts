@@ -1,0 +1,23 @@
+import fs from 'node:fs';
+import {Contract,Interface,parseEther,formatEther} from 'ethers';
+import{checkedProvider,safeFailure}from './env';
+import{boundedRead}from '../server/bounded-read';
+let p:Awaited<ReturnType<typeof checkedProvider>>|undefined;
+try{
+ p=await checkedProvider();const provider=p;const q=JSON.parse(fs.readFileSync('all-scenarios-monad-proof.json','utf8'));if(!q.passed||!q.unusedFundsRecovered)throw Error('Scenario run incomplete');
+ const art=JSON.parse(fs.readFileSync('artifacts/SupportMe.json','utf8'));const aiArt=JSON.parse(fs.readFileSync('artifacts/AIContestController.json','utf8'));
+ const normalize=(code:string)=>{let bytes=code.slice(2);for(const refs of Object.values(aiArt.immutableReferences) as any[])for(const {start,length}of refs)bytes=bytes.slice(0,start*2)+'0'.repeat(length*2)+bytes.slice((start+length)*2);return bytes;};
+ const aiDeployment=JSON.parse(fs.readFileSync('ai-deployment.json','utf8'));const controller=new Contract(q.controller,aiArt.abi,provider);if(await provider.getCode(q.contract)!==art.deployedBytecode||normalize(await provider.getCode(q.controller))!==normalize(aiArt.deployedBytecode)||(await controller.ledger()).toLowerCase()!==q.contract.toLowerCase()||(await controller.verifier()).toLowerCase()!==aiDeployment.verifier.toLowerCase())throw Error('Runtime mismatch');
+ const iface=new Interface(art.abi);const ledger=new Contract(q.contract,art.abi,provider);
+ const receipts=await boundedRead(Object.entries(q.transactions),async([name,entry]:[string,any])=>{const r=await provider.getTransactionReceipt(entry.hash);if(!r||r.status!==1)throw Error('Failed receipt');return{name,receipt:r};});
+ const payouts=receipts.flatMap(({name,receipt})=>receipt.logs.flatMap(log=>{try{const e=iface.parseLog(log);if(e?.name==='ContributionAccepted'){if(!e.args.transferred||e.args.amount!==parseEther('.001'))throw Error('Payout mismatch');return[{name,contributionId:Number(e.args.contributionId),wallet:e.args.contributor,amountMON:formatEther(e.args.amount),hash:receipt.hash}];}return[];}catch(error){if((error as Error).message==='Payout mismatch')throw error;return[];}}));
+ if(payouts.length!==6)throw Error('Missing payout');
+ for(const id of Object.values(q.missions)){const m=await ledger.missions(id);if(!m.closed||m.remaining!==0n)throw Error('Escrow not clear');}
+ const profiles=await boundedRead(q.contributors as string[],async address=>{const r=await ledger.reputation(address);if(await ledger.credits(address)!==0n)throw Error('Payout credit remains');return{address,accepted:Number(r.accepted),submitted:Number(r.submitted),earnedMON:formatEther(r.earned)};});
+ if(profiles.reduce((v,r)=>v+parseEther(r.earnedMON),0n)!==parseEther('.006')||profiles.reduce((v,r)=>v+r.accepted,0)!==6)throw Error('Reputation mismatch');
+ const draw=await ledger.draws(q.missions.raffle);if(!draw.ready||!draw.settled||draw.seed!==q.pyth.seed)throw Error('Pyth state mismatch');
+ const range=receipts.find(r=>r.name==='raffle.request')!.receipt.blockNumber;const end=receipts.find(r=>r.name==='raffle.settle')!.receipt.blockNumber;
+ const logs=await provider.getLogs({address:q.contract,fromBlock:range,toBlock:end});const callback=logs.find(l=>{try{const e=iface.parseLog(l);return e?.name==='RandomnessReceived'&&Number(e.args.missionId)===q.missions.raffle;}catch{return false;}});if(!callback||(await provider.getTransactionReceipt(callback.transactionHash))?.status!==1)throw Error('Callback receipt unavailable');
+ const gas=receipts.reduce((v,r)=>v+r.receipt.fee,0n);if(gas!==BigInt(q.gasSpentWei))throw Error('Gas accounting mismatch');
+ const report={passed:true,chainId:10143,contract:q.contract,controller:q.controller,ledgerExactRuntimeMatch:true,controllerRuntimeAndImmutablesMatch:true,successfulReceipts:receipts.length,allEscrowsClosed:true,payouts,profiles,totalPayoutMON:'0.006',gasSpentMON:formatEther(gas),pythFeeMON:q.oracleFeePaidMON,pythCallback:callback.transactionHash,pythSequence:q.pyth.sequence,aiModel:q.ai.model,aiReservedUpperBoundUSD:q.ai.maximumReservedUSD,liveXOwnershipVerified:false,paidSocialRequests:0,syntheticQA:true,checkedAt:new Date().toISOString()};fs.writeFileSync('all-scenarios-chain-verification.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
+}catch(e){console.log({validationFailure:e instanceof Error&&['Scenario run incomplete','Runtime mismatch','Failed receipt','Payout mismatch','Missing payout','Escrow not clear','Payout credit remains','Reputation mismatch','Pyth state mismatch','Callback receipt unavailable','Gas accounting mismatch'].includes(e.message)?e.message:'Provider check unavailable'});safeFailure('Independent scenario receipt verification');}finally{p?.destroy();}

@@ -1,0 +1,2 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {creationFeeMon,feeTier} from '../shared/fees';
+test('Creation fees have exactly 100x testnet discount and AI includes social',()=>{assert.equal(feeTier(false,false),0);assert.equal(feeTier(false,true),1);assert.equal(feeTier(true,true),2);assert.deepEqual([0,1,2].map(i=>creationFeeMon(10143,i)),['0.2','0.5','2']);assert.deepEqual([0,1,2].map(i=>creationFeeMon(143,i)),['20','50','200']);assert.throws(()=>creationFeeMon(143,3));});
