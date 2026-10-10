@@ -1,0 +1,9 @@
+{
+ "$schema": "node_modules/wrangler/config-schema.json",
+ "name": "support-me-monad",
+ "main": "cloudflare/public-proxy.ts",
+ "compatibility_date": "2026-10-10",
+ "account_id": "236f111e5d8f14f7a5375ce278074213",
+ "workers_dev": true,
+ "observability": { "enabled": false }
+}
