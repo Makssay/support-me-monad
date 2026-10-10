@@ -37,3 +37,4 @@ createRoot(document.getElementById('root')!, { onRecoverableError(error) {
  window.reportError(error);
 // Page fades and local wizard motion do not need asynchronous router commits.
 } }).render(<React.StrictMode><BrowserRouter useTransitions={false}><Bootstrap /></BrowserRouter></React.StrictMode>);
+import './home.css';

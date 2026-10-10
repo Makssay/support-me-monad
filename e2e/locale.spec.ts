@@ -32,7 +32,7 @@ test('Russian interface preserves drafts and canonical metadata through payout, 
     await page.goto('/');
     await page.getByRole('button', { name: 'Русский', exact: true }).click();
     await expect(page.locator('html')).toHaveAttribute('lang', 'ru');
-    await expect(page.getByRole('heading', { name: 'Приноси пользу.' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Поддержи полезные идеи.' })).toBeVisible();
     await page.reload();
     await expect(page.getByRole('button', { name: 'Русский', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await page.getByRole('button', { name: 'Подключить кошелёк' }).click();

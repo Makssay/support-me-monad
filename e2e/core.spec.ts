@@ -25,7 +25,7 @@ test('Two wallets complete the mission, payout, reputation and refund flow', asy
   return p.send(method, params);
  });
  await page.addInitScript(() => { const listeners: Record<string, Array<(...a: any[]) => void>> = {}; (window as any).ethereum = { isMetaMask: true, request: (a: unknown) => (window as any).localWalletRequest(a), on: (e: string, f: (...a: any[]) => void) => (listeners[e] ||= []).push(f), removeListener: (e: string, f: (...a: any[]) => void) => { listeners[e] = listeners[e]?.filter(x => x !== f); } }; (window as any).switchLocalWallet = (address: string) => listeners.accountsChanged?.forEach(f => f([address])); });
- await page.goto('/'); await expect(page.getByRole('heading', { name: 'Make yourself useful.' })).toBeVisible();
+ await page.goto('/'); await expect(page.getByRole('heading', { name: 'Support good ideas.' })).toBeVisible();
  await page.getByRole('button', { name: 'Connect wallet' }).click(); await page.getByRole('button', { name: 'MetaMask' }).click();
  await page.getByRole('link', { name: 'Create mission', exact: true }).first().click();
  await expect(page.getByLabel('Your creator name')).toHaveCount(0);
