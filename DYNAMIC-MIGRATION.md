@@ -1,4 +1,12 @@
-# Dynamic trial (2026-10-11)
+# Dynamic trial — stopped (2026-10-11)
+
+User chose to keep Privy as the only live provider. Production
+DYNAMIC_ENVIRONMENT_ID has been removed and AUTH_PROVIDER is privy. Stale
+`?auth=dynamic` URLs and browser preferences fall back to Privy. No wallets
+were migrated. The trial failed with Dynamic HTTP 422: `Failed to fetch user
+profile`; the underlying X response and any billing cause remain unconfirmed.
+Integration code is parked for reference, not enabled in production.
+
 
 Support Me can select Dynamic without deleting the Privy integration. Production
 must remain on Privy until X OAuth and a sponsored Monad Testnet contract call

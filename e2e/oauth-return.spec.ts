@@ -25,3 +25,16 @@ test('First X OAuth return mounts Privy without a remembered session or another 
  await page.reload();
  await expect(page.getByTestId('oauth-sdk-mounted')).toBeVisible();
 });
+
+test('Disabled Dynamic trial falls back to Privy despite old URL and preference',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('support.auth-provider','dynamic'));
+ await page.route('**/api/config',async route=>{const response=await route.fetch();const data=await response.json();await route.fulfill({response,json:{...data,privyAppId:'qa-privy-only',dynamicEnvironmentId:'',authProvider:'privy'}});});
+ let dynamicRequested=false;await page.route('**/src/dynamic.tsx',route=>{dynamicRequested=true;return route.abort();});
+ await page.route('**/src/privy.tsx',route=>route.fulfill({contentType:'application/javascript',body:`import React from '/node_modules/.vite/deps/react.js';export default function MockPrivy({onSession}){React.useEffect(()=>{onSession({provider:'privy',ready:true,authenticated:false,wallets:[],login:()=>{},logout:async()=>{},connectWallet:()=>{}})},[onSession]);return React.createElement('span',{'data-testid':'privy-only-sdk'},'Privy');}`}));
+ await page.goto('/?auth=dynamic');
+ await page.getByRole('button',{name:'Sign in',exact:true}).click();
+ await page.getByRole('button',{name:'Continue with X'}).click();
+ await expect(page.getByTestId('privy-only-sdk')).toBeVisible();
+ expect(dynamicRequested).toBe(false);
+ expect(await page.evaluate(()=>localStorage.getItem('support.auth-provider'))).toBe('privy');
+});
