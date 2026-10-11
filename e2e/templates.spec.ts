@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import {test,expect} from '@playwright/test';
 import {HDNodeWallet,JsonRpcProvider,getBytes} from 'ethers';
 import {missionTemplates} from '../src/mission-templates';
@@ -19,6 +20,13 @@ test('All templates validate, review, preserve edits and publish safely',async({
   await page.goto('/create');await page.getByRole('button',{name:item.title+' '+item.summary,exact:true}).click();
   await expect(page.locator('.template-form')).toBeVisible();await expect(page.getByLabel('The brief',{exact:true})).toHaveValue(item.brief);
   await expect(page.locator('.wizard-steps')).toHaveCount(0);
+  if(item.id==='nft'){
+   await expect(page.getByLabel('Wallet / NFT requirement')).toHaveCount(0);
+   await expect(page.getByLabel('Discord requirement')).toHaveCount(0);
+   await page.getByLabel('NFT collection contract on this network').fill('not-an-address');
+   await page.getByRole('button',{name:'Review mission',exact:true}).click();await expect(page.getByRole('alert')).toContainText('Enter a valid NFT contract address.');
+   await page.getByLabel('NFT collection contract on this network').fill(JSON.parse(fs.readFileSync('.data/local-community-nft.json','utf8')).address);
+  }
   if(item.id==='reply'){
    await page.getByLabel('Contest post URL').fill('https://example.com/not-a-post');await page.getByRole('button',{name:'Review mission',exact:true}).click();
    await expect(page.getByRole('alert')).toContainText('Use a public X post URL');await page.getByLabel('Contest post URL').fill('https://x.com/creator/status/1234567890');

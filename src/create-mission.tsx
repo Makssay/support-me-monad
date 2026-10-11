@@ -29,7 +29,7 @@ export default function CreateMission() { useLocale();
   setTemplate(next);setStep(0);setError('');setCategory(next.category);setMode(next.mode);
   setTitle(t(next.title));setDescription(t(next.brief));setRequirements(t(next.requirements));
   setTargetPost('');setSocial(false);setAIReview(false);setCriteria(parseRubric(DEFAULT_RUBRIC));
-  setCommunity(emptyCommunity);setAsset(nativeReward);setTokenInput('');setTokenError('');setTokenBalance('');
+  setCommunity(next.id==='nft'?{...emptyCommunity,nft:'hold'}:emptyCommunity);setAsset(nativeReward);setTokenInput('');setTokenError('');setTokenBalance('');
   tokenRequest.current++;setCheckingToken(false);setReward('0.01');setSlots('3');setDays('7');setReviewDays('3');setWorkHours('24');setQuick(false);
  }
  const compact=!!template&&step!==3;
@@ -87,6 +87,7 @@ export default function CreateMission() { useLocale();
   event.preventDefault(); setError('');
   if(!template||mode!==Number(template.mode)){setError('Choose an available template.');return;}
   if (category==='Replies'&&!socialPostId(targetPost)){if(step!==0)changeStep(0);setError('Use a public X post URL for the reply task.');return;}
+  if(template.id==='nft'&&community.nft!=='hold'){setError('Choose a community requirement.');return;}
   if((compact||step>=2)&&admissionError){setError(admissionError);return;}
   if((compact||step>=2)&&mode===6&&!admissionPolicy){setError('Choose a community requirement.');return;}
   if ((compact||step >= 2) && rubricError) { setError(rubricError); return; }
@@ -165,7 +166,7 @@ export default function CreateMission() { useLocale();
 
      </>}
      {panel === 2 && <>
-      <details className="form-disclosure" open={template?undefined:true}><summary><ShieldCheck size={17}/>{t("Community access and extra checks")}<ChevronDown size={17}/></summary><CommunityEditor value={community} onChange={setCommunity}/></details>
+      <details className="form-disclosure" open={template?.id==='nft'||!template?true:undefined}><summary><ShieldCheck size={17}/>{t(template?.id==='nft'?"NFT holder requirements":"Community access and extra checks")}<ChevronDown size={17}/></summary><CommunityEditor value={community} onChange={setCommunity} nftOnly={template?.id==='nft'}/></details>
       <label>{t("The brief")}<textarea aria-label={t("The brief")} required rows={5} maxLength={1800} value={description} onChange={e => setDescription(e.target.value)} placeholder={t("What are you making, and how can someone help?")}/></label>
       <label>{t("What makes a great contribution?")}<textarea aria-label={t("What makes a great contribution?")} required rows={3} maxLength={1000} value={requirements} onChange={e => setRequirements(e.target.value)} placeholder={t("Publish objective acceptance criteria. For bugs, define scope, reproduction steps and the duplicate rule.")}/></label>
       {mode!==6&&<label className="checkbox-label"><input type="checkbox" checked={requireX} disabled={forcedX} onChange={e => setSocial(e.target.checked)}/><span>{t("Require a public X / Twitter post link")}<small>{t("X API retrieves the publication. The creator checks quality unless AI judging is selected.")}</small></span></label>}

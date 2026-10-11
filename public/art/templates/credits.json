@@ -8,7 +8,9 @@
     "feedback.webp",
     "content.webp",
     "bug.webp",
-    "builder.webp"
+    "builder.webp",
+    "nft.webp"
   ],
-  "latestEditsCostUsd": 0.0678275
+  "latestEditsCostUsd": 0.0678275,
+  "nftExplorationCostUsd": 0.172543
 }

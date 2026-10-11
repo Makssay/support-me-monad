@@ -1,5 +1,12 @@
 // Interface copy only. Creator-authored text and signing payloads are unchanged.
 export const ru: Record<string, string> = {
+ "NFT holders": "NFT-холдеры",
+ "NFT holder giveaway": "Розыгрыш для NFT-холдеров",
+ "Hold an NFT → verify wallet → random winners": "Холди NFT → подтверди кошелёк → случайные победители",
+ "NFT holder requirements": "Условия для NFT-холдеров",
+ "Choose the collection and minimum balance. Ownership is checked at entry and again after entries close. Rewards go to the Support Me wallet.": "Укажи коллекцию и минимальный баланс. Владение проверяется при входе и повторно после окончания приёма заявок. Награды приходят на кошелёк Support Me.",
+ "A giveaway for holders of our NFT collection. Verify ownership and enter; no reply or creative work is required.": "Розыгрыш для холдеров нашей NFT-коллекции. Подтверди владение и участвуй; реплай или творческая работа не нужны.",
+ "Hold the minimum NFT balance in the specified collection when entering and until the final eligibility check after entries close. One verified external wallet per entry; rewards go to your Support Me wallet.": "Холди минимальное количество NFT указанной коллекции при входе и до итоговой проверки после окончания приёма заявок. Один проверочный кошелёк на участника; награды приходят на твой кошелёк Support Me.",
  "Custom builder": "Конструктор",
  "Your own payment formats and flexible settings. Coming soon.": "Свои форматы выплат и гибкие настройки. Скоро.",
  "Change template": "Другой шаблон",
