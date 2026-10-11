@@ -1,5 +1,6 @@
 // Interface copy only. Creator-authored text and signing payloads are unchanged.
 export const ru: Record<string, string> = {
+ "Dynamic could not complete X sign-in. Please retry.": "Dynamic не смог завершить вход через X. Попробуй ещё раз.",
  "Sign in via Dynamic": "Вход через Dynamic",
  "Open existing Privy wallet": "Открыть прежний кошелёк Privy",
  "Wallet list": "Список кошельков",

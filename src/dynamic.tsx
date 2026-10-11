@@ -9,7 +9,7 @@ import type { AuthSession, AuthWallet } from './state';
 import BackupSignInDialog from './backup-signin-dialog';
 import { dynamicWalletProvider } from './dynamic-wallet-provider';
 
-function DynamicBridge({ environmentId, chainId, gasSponsorship, onSession }: { environmentId:string; chainId:number; gasSponsorship:boolean; onSession:(auth:AuthSession)=>void }) {
+function DynamicBridge({ environmentId, chainId, gasSponsorship, onSession, oauthError, clearOAuthError }: { environmentId:string; chainId:number; gasSponsorship:boolean; onSession:(auth:AuthSession)=>void; oauthError:string; clearOAuthError:()=>void }) {
  const { sdkHasLoaded, user, handleLogOut, setShowDynamicUserProfile } = useDynamicContext();
  const authenticated = useIsLoggedIn();
  const wallets = useUserWallets();
@@ -24,7 +24,7 @@ function DynamicBridge({ environmentId, chainId, gasSponsorship, onSession }: { 
  const delegation = useRef(create7702DelegationRegistry());
  const accessToken = useCallback(async () => getAuthToken() || null, []);
  const retry = useCallback(() => setAttempt(n=>n+1), []);
- const login = useCallback(() => { void social.signInWithSocialAccount(ProviderEnum.Twitter).catch(()=>setError('Sign in could not load. Please retry.')); }, [social.signInWithSocialAccount]);
+ const login = useCallback(() => { clearOAuthError(); void social.signInWithSocialAccount(ProviderEnum.Twitter,{redirectUrl: `${location.origin}/?auth=dynamic`}).catch(()=>setError('Sign in could not load. Please retry.')); }, [social.signInWithSocialAccount,clearOAuthError]);
  const linkX = useCallback(() => { void social.linkSocialAccount(ProviderEnum.Twitter).catch(()=>setError('Sign in could not load. Please retry.')); }, [social.linkSocialAccount]);
  const loginBackup = useCallback(() => {setSent(false);setEmail('');setCode('');setEmailError('');setBackup(true);}, []);
  const identity = JSON.stringify(user?.verifiedCredentials);
@@ -58,11 +58,14 @@ function DynamicBridge({ environmentId, chainId, gasSponsorship, onSession }: { 
   }:undefined
  })),[member,wallets,user,gasSponsorship,project,chainId,environmentId,sdkApi]);
  const linkEmail=useCallback(()=>setShowDynamicUserProfile(true),[setShowDynamicUserProfile]);
- const session=useMemo<AuthSession>(()=>({provider:'dynamic',ready:sdkHasLoaded,authenticated,login,loginBackup,logout:handleLogOut,connectWallet:retry,retry,linkX,linkEmail,getAccessToken:accessToken,member,needsX,accountError:error,wallets:allowedWallets}),[sdkHasLoaded,authenticated,login,loginBackup,handleLogOut,retry,linkX,linkEmail,accessToken,member,needsX,error,allowedWallets]);
+ const session=useMemo<AuthSession>(()=>({provider:'dynamic',ready:sdkHasLoaded,authenticated,login,loginBackup,logout:handleLogOut,connectWallet:retry,retry,linkX,linkEmail,getAccessToken:accessToken,member,needsX,accountError:error || oauthError || (social.error ? `Dynamic: ${social.error.code}` : ''),wallets:allowedWallets}),[sdkHasLoaded,authenticated,login,loginBackup,handleLogOut,retry,linkX,linkEmail,accessToken,member,needsX,error,oauthError,social.error,allowedWallets]);
  useEffect(()=>onSession(session),[session,onSession]);
  async function submitEmail(e:FormEvent){e.preventDefault();if(sending)return;setSending(true);setEmailError('');try{if(!sent){await otp.connectWithEmail(email.trim());setSent(true);}else{await otp.verifyOneTimePassword(code);setBackup(false);}}catch{setEmailError('Could not send a code. Use the backup email you already linked, or sign in with X.');}finally{setSending(false);}}
  return backup?<BackupSignInDialog email={email} code={code} sent={sent} sending={sending} error={emailError} onEmail={setEmail} onCode={setCode} onClose={()=>setBackup(false)} onReset={()=>{setSent(false);setCode('');setEmailError('');}} onSubmit={submitEmail}/>:null;
 }
 export default function DynamicAuth(props:{ environmentId:string; chainId:number; gasSponsorship:boolean; onSession:(auth:AuthSession)=>void }) {
- return <DynamicContextProvider settings={{environmentId:props.environmentId,walletConnectors:[DynamicWaasEVMConnectors],appName:'Support Me',appLogoUrl:`${location.origin}/mark.svg`,socialProvidersFilter:providers=>providers.filter(p=>p==='twitter'),overrides:{evmNetworks:[{iconUrls:[`${location.origin}/mark.svg`],blockExplorerUrls:[props.chainId===143?'https://monadscan.com':'https://testnet.monadscan.com'],chainId:props.chainId,name:props.chainId===143?'Monad':'Monad Testnet',networkId:props.chainId,nativeCurrency:{name:'MON',symbol:'MON',decimals:18},rpcUrls:[props.chainId===143?'https://rpc.monad.xyz':'https://testnet-rpc.monad.xyz']}]}}} theme="dark"><DynamicBridge {...props}/></DynamicContextProvider>;
+ const [oauthError,setOAuthError]=useState('');
+ const clearOAuthError=useCallback(()=>setOAuthError(''),[]);
+ return <DynamicContextProvider settings={{events:{onAuthFailure:(_data,reason)=>{if(typeof reason === 'string')return;setOAuthError('Dynamic could not complete X sign-in. Please retry.');},onAuthSuccess:()=>setOAuthError('')},environmentId:props.environmentId,walletConnectors:[DynamicWaasEVMConnectors],appName:'Support Me',appLogoUrl:`${location.origin}/mark.svg`,socialProvidersFilter:providers=>providers.filter(p=>p==='twitter'),overrides:{evmNetworks:[{iconUrls:[`${location.origin}/mark.svg`],blockExplorerUrls:[props.chainId===143?'https://monadscan.com':'https://testnet.monadscan.com'],chainId:props.chainId,name:props.chainId===143?'Monad':'Monad Testnet',networkId:props.chainId,nativeCurrency:{name:'MON',symbol:'MON',decimals:18},rpcUrls:[props.chainId===143?'https://rpc.monad.xyz':'https://testnet-rpc.monad.xyz']}]}}} theme="dark"><DynamicBridge {...props} oauthError={oauthError} clearOAuthError={clearOAuthError}/></DynamicContextProvider>;
 }
+
