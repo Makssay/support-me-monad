@@ -35,6 +35,11 @@ test('All templates validate, review, preserve edits and publish safely',async({
   await page.getByRole('button',{name:'Next',exact:true}).click();
   await expect(page.locator('.wizard-steps li[aria-current=step]')).toHaveText('2Reward');
   await expect(page.getByRole('textbox',{name:'Mission title',exact:true})).not.toBeVisible();
+  const quickTest=page.getByRole('checkbox',{name:'Quick test · every stage is 5 minutes',exact:false});
+  await expect(quickTest).toBeVisible();await quickTest.check();
+  await expect(page.getByLabel('Accept submissions for')).toBeDisabled();
+  await expect(page.getByLabel('Accept submissions for')).toHaveValue('quick');
+  await quickTest.uncheck();await expect(page.getByLabel('Accept submissions for')).toBeEnabled();
   await page.getByLabel('Reward per contribution',{exact:true}).fill('0.02');await page.getByLabel('Reward slots',{exact:true}).fill('2');
   await page.getByRole('button',{name:'Next',exact:true}).click();
   await expect(page.getByLabel('The brief',{exact:true})).toHaveValue(item.brief);
