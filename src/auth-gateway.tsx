@@ -1,6 +1,7 @@
 import { t, useLocale } from './i18n';
 import { Component, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AppProvider, type AuthSession } from './state';
+const DynamicAuth = lazy(() => import('./dynamic'));
 const PrivyAuth = lazy(() => import('./privy'));
 const SESSION_MARKER = 'support.privy-session';
 // A first-time OAuth return has no saved session yet. Mount the SDK so it can
@@ -17,20 +18,26 @@ class AuthBoundary extends Component<{ children: ReactNode; onFailure: () => voi
 }
 // Keep the public product mounted while authentication loads separately.
 // This marker is only a boolean hint; Privy remains the authority for the session.
-export default function AuthGateway({ appId, chainId, children }: { appId: string; chainId:number; children: ReactNode }) { useLocale(); 
- const [enabled, setEnabled] = useState(() => hasOAuthReturn() || localStorage.getItem(SESSION_MARKER) === '1');
+export default function AuthGateway({ appId, chainId, children, dynamicEnvironmentId, authProvider = 'privy', dynamicGasSponsorship = false }: { appId: string; chainId:number; children: ReactNode; dynamicEnvironmentId?:string; authProvider?:'privy'|'dynamic'; dynamicGasSponsorship?:boolean }) { useLocale();
+ const requested = new URLSearchParams(location.search).get('auth');
+ const preferredProvider = requested || localStorage.getItem('support.auth-provider') || authProvider;
+ const provider = dynamicEnvironmentId && preferredProvider === 'dynamic' ? 'dynamic' : 'privy';
+ useEffect(() => { localStorage.setItem('support.auth-provider', provider); }, [provider]);
+ const loginLegacy = useCallback(() => { const url = new URL(location.href);url.searchParams.set('auth','privy');location.assign(url.href); }, []);
+ const onSession = useCallback((auth:AuthSession) => setSession({...auth, ...(provider === 'dynamic' && appId ? {loginLegacy} : {})}), [provider,appId,loginLegacy]); 
+ const [enabled, setEnabled] = useState(() => provider === 'dynamic' || hasOAuthReturn() || localStorage.getItem(`${SESSION_MARKER}.${provider}`) === '1');
  const [session, setSession] = useState<AuthSession>();
  const [opening, setOpening] = useState(false);
  const pendingLogin = useRef<false | 'x' | 'email'>(false);
  const requestLogin = useCallback(() => { pendingLogin.current = 'x'; setOpening(true); setEnabled(true); }, []);
  const requestBackup = useCallback(() => { pendingLogin.current = 'email'; setOpening(true); setEnabled(true); }, []);
- const deferred = useMemo<AuthSession>(() => ({ ready: true, authenticated: false, wallets: [], login: requestLogin, loginBackup: requestBackup, connectWallet: requestLogin, logout: async () => { localStorage.removeItem(SESSION_MARKER); } }), [requestLogin, requestBackup]);
+ const deferred = useMemo<AuthSession>(() => ({ ready: true, authenticated: false, wallets: [], login: requestLogin, loginBackup: requestBackup, connectWallet: requestLogin, logout: async () => { localStorage.removeItem(`${SESSION_MARKER}.${provider}`); } }), [requestLogin, requestBackup]);
  useEffect(() => {
   if (!session?.ready) return;
-  if (session.authenticated) localStorage.setItem(SESSION_MARKER, '1');
-  else localStorage.removeItem(SESSION_MARKER);
+  if (session.authenticated) localStorage.setItem(`${SESSION_MARKER}.${provider}`, '1');
+  else localStorage.removeItem(`${SESSION_MARKER}.${provider}`);
   if (pendingLogin.current) { const method = pendingLogin.current; pendingLogin.current = false; if (!session.authenticated) { if (method === 'email') session.loginBackup?.(); else session.login(); } }
   setOpening(false);
  }, [session]);
- return <><AppProvider auth={session || deferred}>{children}</AppProvider>{enabled && <AuthBoundary onFailure={() => setOpening(false)}><Suspense fallback={null}><PrivyAuth appId={appId} chainId={chainId} onSession={setSession}/></Suspense></AuthBoundary>}{opening && !session?.ready && <div className="auth-progress" role="status"><p>{t("Preparing sign in…")}</p><button className="button secondary" onClick={() => { pendingLogin.current = false; setOpening(false); }}>{t("Cancel")}</button></div>}</>;
+ return <><AppProvider auth={session || deferred}>{children}</AppProvider>{enabled && <AuthBoundary onFailure={() => setOpening(false)}><Suspense fallback={null}>{provider === 'dynamic' ? <DynamicAuth environmentId={dynamicEnvironmentId!} chainId={chainId} gasSponsorship={dynamicGasSponsorship} onSession={onSession}/> : <PrivyAuth appId={appId} chainId={chainId} onSession={onSession}/>}</Suspense></AuthBoundary>}{opening && !session?.ready && <div className="auth-progress" role="status"><p>{t("Preparing sign in…")}</p><button className="button secondary" onClick={() => { pendingLogin.current = false; setOpening(false); }}>{t("Cancel")}</button></div>}</>;
 }

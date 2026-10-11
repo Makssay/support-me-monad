@@ -9,7 +9,7 @@ import { PUBLIC_RPC, shortAddress, type Snapshot, type AppConfig } from '../shar
 interface Wallet extends Eip1193Provider { on?: (event: string, listener: (...args: any[]) => void) => void; removeListener?: (event: string, listener: (...args: any[]) => void) => void; providers?: Wallet[]; isMetaMask?: boolean; isRabby?: boolean; }
 declare global { interface Window { ethereum?: Wallet; } }
 export interface AuthWallet { address: string; label: string; getProvider: () => Promise<Eip1193Provider>; switchChain: (id: number) => Promise<void>; sendSponsored?: (transaction: { to: string; data: string; value: bigint; chainId: number }) => Promise<string>; }
-export interface AuthSession { ready: boolean; authenticated: boolean; wallets: AuthWallet[]; login: () => void; logout: () => Promise<void>; connectWallet: () => void; creatingWallet?: boolean; loginBackup?: () => void; linkX?: () => void; linkEmail?: () => void; retry?: () => void; getAccessToken?: () => Promise<string | null>; member?: { xId: string; username: string; backupEmail: boolean }; accountError?: string; cleanupError?: string; needsX?: boolean; }
+export interface AuthSession { provider?: 'privy' | 'dynamic'; loginLegacy?: () => void; ready: boolean; authenticated: boolean; wallets: AuthWallet[]; login: () => void; logout: () => Promise<void>; connectWallet: () => void; creatingWallet?: boolean; loginBackup?: () => void; linkX?: () => void; linkEmail?: () => void; retry?: () => void; getAccessToken?: () => Promise<string | null>; member?: { xId: string; username: string; backupEmail: boolean }; accountError?: string; cleanupError?: string; needsX?: boolean; }
 interface Notice { kind: 'success' | 'error' | 'pending'; text: string; tx?: string; values?: Record<string, string>; }
 interface Context { state?: Snapshot; config?: AppConfig; loading: boolean; error: string; address: string; balance: string; wrongChain: boolean; walletOpen: boolean; setWalletOpen: (open: boolean) => void; connect: (wallet?: Wallet) => Promise<void>; disconnect: () => void; refresh: () => Promise<void>; transact: (label: string, method: string, args: unknown[], value?: bigint) => Promise<TransactionReceipt | undefined>; sign: (message: string) => Promise<string>; apiFetch: (url: string, init?: RequestInit) => Promise<Response>; notice?: Notice; clearNotice: () => void; busy: boolean; gasSponsored: boolean; auth?: AuthSession; chooseWallet: (address: string) => Promise<void>; lockPayoutWallet: () => () => void; }
 const AppContext = createContext<Context>(null!);
@@ -83,10 +83,10 @@ export function AppProvider({ children, auth }: { children: ReactNode; auth?: Au
  async function apiFetch(url: string, init: RequestInit = {}) {
    if (!url.startsWith('/api/') || url.startsWith('//')) throw new Error('Invalid API destination.');
    const headers = new Headers(init.headers);
-   if (currentAuth.current) { const token = await currentAuth.current.getAccessToken?.(); if (!token) throw new Error('Sign in again to continue.'); headers.set('Authorization', `Bearer ${token}`); }
+   if (currentAuth.current) { const token = await currentAuth.current.getAccessToken?.(); if (!token) throw new Error('Sign in again to continue.'); headers.set('Authorization', `Bearer ${token}`); headers.set('X-Auth-Provider', currentAuth.current.provider || 'privy'); }
    return fetch(url, { ...init, headers, redirect: 'error' });
  }
- const gasSponsored = !!(config?.gasSponsorship && auth?.wallets.find(w => w.address.toLowerCase() === address.toLowerCase())?.sendSponsored);
+ const gasSponsored = !!((auth?.provider === 'dynamic' ? config?.dynamicGasSponsorship : config?.gasSponsorship) && auth?.wallets.find(w => w.address.toLowerCase() === address.toLowerCase())?.sendSponsored);
  async function transact(label: string, method: string, args: unknown[], value?: bigint) {
    if (!connected.current || !selected.current) { setWalletOpen(true); return; }
    if (!config?.contractAddress) { setNotice({ kind: 'error', text: 'Missions are not available until the contract is deployed.' }); return; }
@@ -96,7 +96,7 @@ export function AppProvider({ children, auth }: { children: ReactNode; auth?: Au
    let sentHash = '';
    const confirmationTimer=setTimeout(()=>{if(!sentHash)setNotice({kind:'pending',text:'Wallet confirmation is taking longer than expected. If its window disappeared, check My missions before refreshing. Do not submit the payment again blindly.'});},45000);
    const authWallet = currentAuth.current?.wallets.find(w => w.address.toLowerCase() === account.toLowerCase());
-   const sponsored = !!(config.gasSponsorship && authWallet?.sendSponsored);
+   const sponsored = !!((currentAuth.current?.provider === 'dynamic' ? config.dynamicGasSponsorship : config.gasSponsorship) && authWallet?.sendSponsored);
    try {
      await network(wallet);
      if (wallet !== selected.current || account !== connected.current) throw new Error('Account changed. Retry.');

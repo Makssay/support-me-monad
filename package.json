@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": "22.x" },
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "concurrently -k \"npm:dev:api\" \"npm:dev:web\"",
     "dev:api": "tsx watch server/index.ts",
@@ -31,6 +33,11 @@
     "test:automation": "tsx scripts/run-e2e.ts --automation e2e/automation.spec.ts"
   },
   "dependencies": {
+    "@dynamic-labs/ethereum-core": "^5.10.0",
+    "@dynamic-labs/ethereum-gasless-core": "^5.10.0",
+    "@dynamic-labs/sdk-api-core": "^0.70.0",
+    "@dynamic-labs/sdk-react-core": "^5.10.0",
+    "@dynamic-labs/waas-evm": "^5.10.0",
     "@fontsource/dm-sans": "^5.3.0",
     "@fontsource/outfit": "^5.3.0",
     "@privy-io/node": "^0.35.0",
@@ -40,6 +47,7 @@
     "ethers": "^6.14.0",
     "express": "^5.1.0",
     "express-rate-limit": "^7.5.0",
+    "jose": "^6.2.12",
     "lucide-react": "^0.511.0",
     "motion": "^14.0.0",
     "react": "^19.3.0",

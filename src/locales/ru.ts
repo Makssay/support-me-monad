@@ -1,5 +1,6 @@
 // Interface copy only. Creator-authored text and signing payloads are unchanged.
 export const ru: Record<string, string> = {
+ "Open existing Privy wallet": "Открыть прежний кошелёк Privy",
  "Wallet list": "Список кошельков",
  "Wallet list giveaway": "Розыгрыш по списку кошельков",
  "Upload wallets → verify ownership → random winners": "Загрузи кошельки → подтверждение владения → случайные победители",

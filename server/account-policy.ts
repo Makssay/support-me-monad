@@ -19,6 +19,9 @@ export function enroll(user: IdentityUser, members: Record<string, Member>): Mem
  if (Object.values(members).some(m => m.xId === twitter.subject)) throw new AccountError('X_IN_USE', 'This X account already belongs to a Support Me account. Sign in to that account.');
  return { userId: user.id, xId: twitter.subject!, username: twitter.username || '', joinedAt: Date.now() };
 }
+export function isSupportWallet(a: IdentityUser['linked_accounts'][number]): boolean {
+ return a.type === 'wallet' && a.chain_type === 'ethereum' && (a.wallet_client_type === 'privy' || a.wallet_client_type === 'dynamic') && a.connector_type === 'embedded' && typeof a.verified_at === 'number';
+}
 export function ownsWallet(user: IdentityUser, wallet: string): boolean {
- return /^0x[\da-f]{40}$/i.test(wallet) && user.linked_accounts.some(a => a.type === 'wallet' && a.chain_type === 'ethereum' && a.wallet_client_type === 'privy' && a.connector_type === 'embedded' && typeof a.verified_at === 'number' && a.address?.toLowerCase() === wallet.toLowerCase());
+ return /^0x[\da-f]{40}$/i.test(wallet) && user.linked_accounts.some(a => isSupportWallet(a) && a.address?.toLowerCase() === wallet.toLowerCase());
 }
