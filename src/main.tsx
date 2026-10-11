@@ -40,3 +40,4 @@ createRoot(document.getElementById('root')!, { onRecoverableError(error) {
 import './home.css';
 
 import './account-dialog.css';
+import './community-pages.css';

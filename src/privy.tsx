@@ -1,6 +1,6 @@
 import { t, useLocale } from './i18n';
 import { useMemo, useEffect, useState, useRef, useCallback, memo, type FormEvent } from 'react';
-import { createPortal } from 'react-dom';
+import BackupSignInDialog from './backup-signin-dialog';
 import { PrivyProvider, usePrivy, useWallets, useSendTransaction, useLoginWithEmail, useCreateWallet, useUnlinkWallet } from '@privy-io/react-auth';
 import { defineChain } from 'viem';
 import { CHAIN_ID, EXPLORER, PUBLIC_RPC } from '../shared/model';
@@ -83,14 +83,13 @@ function WalletBridge({ onSession }: { onSession: (auth: AuthSession) => void })
  })) : [], [!!member, wallets, supportAddress, sendTransaction]);
  const auth = useMemo<AuthSession>(() => ({ ready: ready && walletsReady, authenticated, login: loginX, loginBackup, logout, connectWallet: retry, creatingWallet, linkX: linkTwitter, linkEmail, retry, getAccessToken, member, needsX, accountError: error, cleanupError, wallets: allowedWallets }), [ready, walletsReady, authenticated, loginX, loginBackup, logout, creatingWallet, linkTwitter, linkEmail, retry, getAccessToken, member, needsX, error, cleanupError, allowedWallets]);
  useEffect(() => onSession(auth), [auth, onSession]);
- useEffect(() => { if (!backup) return; const close = (e: KeyboardEvent) => { if (e.key === 'Escape' && !sending) setBackup(false); }; window.addEventListener('keydown', close); return () => window.removeEventListener('keydown', close); }, [backup, sending]);
  async function submitEmail(e: FormEvent) {
   e.preventDefault(); if (sending) return; setSending(true); setEmailError('');
   try { if (!sent) { await emailLogin.sendCode({ email: email.trim(), disableSignup: true }); setSent(true); } else { await emailLogin.loginWithCode({ code }); setBackup(false); } }
   catch { setEmailError(sent ? 'The code could not be accepted. Check it or request a new code.' : 'Could not send a code. Use the backup email you already linked, or sign in with X.'); }
   finally { setSending(false); }
  }
- return backup ? createPortal(<div className="modal-backdrop"><section className="wallet-dialog" role="dialog" aria-modal="true" aria-labelledby="backup-title"><button className="close icon-button" aria-label={t("Close backup sign in")} disabled={sending} onClick={() => setBackup(false)}>×</button><img src="/mark.svg" width="55" height="55" alt=""/><h2 id="backup-title">{t("Your backup way in.")}</h2><p>{t("Use the verified email linked to your existing Support Me account.")}</p><form onSubmit={submitEmail} className="backup-form"><label>{sent ? t("Email verification code") : t("Backup email")}<input autoFocus required autoComplete={sent ? 'one-time-code' : 'email'} type={sent ? 'text' : 'email'} inputMode={sent ? 'numeric' : 'email'} pattern={sent ? '[0-9]{6}' : undefined} maxLength={sent ? 6 : 254} value={sent ? code : email} onChange={e => sent ? setCode(e.target.value) : setEmail(e.target.value)}/></label>{emailError && <p className="callout" role="alert">{t(emailError)}</p>}<button className="button primary wide" disabled={sending}>{sending ? t("Please wait…") : sent ? t("Sign in") : t("Send verification code")}</button>{sent && <button type="button" className="button secondary wide" disabled={sending} onClick={() => { setSent(false); setCode(''); }}>{t("Use another email / resend")}</button>}</form><small>{t("New here? Create your account with X first.")}</small></section></div>, document.body) : null;
+ return backup ? <BackupSignInDialog email={email} code={code} sent={sent} sending={sending} error={emailError} onEmail={setEmail} onCode={setCode} onClose={()=>setBackup(false)} onReset={()=>{setSent(false);setCode('');setEmailError('');}} onSubmit={submitEmail}/> : null;
 }
 export default memo(function PrivyAuth({ appId, chainId, onSession }: { appId: string; chainId:number; onSession: (auth: AuthSession) => void }) { useLocale();
  const activeChain=chainId===143?defineChain({id:143,name:'Monad',nativeCurrency:{name:'MON',symbol:'MON',decimals:18},rpcUrls:{default:{http:['https://rpc.monad.xyz']}},blockExplorers:{default:{name:'Monadscan',url:'https://monadscan.com'}}}):monad;
