@@ -19,9 +19,12 @@ class AuthBoundary extends Component<{ children: ReactNode; onFailure: () => voi
 // Keep the public product mounted while authentication loads separately.
 // This marker is only a boolean hint; Privy remains the authority for the session.
 export default function AuthGateway({ appId, chainId, children, dynamicEnvironmentId, authProvider = 'privy', dynamicGasSponsorship = false }: { appId: string; chainId:number; children: ReactNode; dynamicEnvironmentId?:string; authProvider?:'privy'|'dynamic'; dynamicGasSponsorship?:boolean }) { useLocale();
- const requested = new URLSearchParams(location.search).get('auth');
- const preferredProvider = requested || localStorage.getItem('support.auth-provider') || authProvider;
- const provider = dynamicEnvironmentId && preferredProvider === 'dynamic' ? 'dynamic' : 'privy';
+ // Router navigation and OAuth query cleanup must not switch a mounted SDK.
+ const [provider] = useState<'privy' | 'dynamic'>(() => {
+  const requested = new URLSearchParams(location.search).get('auth');
+  const preferred = requested || localStorage.getItem('support.auth-provider') || authProvider;
+  return dynamicEnvironmentId && preferred === 'dynamic' ? 'dynamic' : 'privy';
+ });
  useEffect(() => { localStorage.setItem('support.auth-provider', provider); }, [provider]);
  const loginLegacy = useCallback(() => { const url = new URL(location.href);url.searchParams.set('auth','privy');location.assign(url.href); }, []);
  const onSession = useCallback((auth:AuthSession) => setSession({...auth, ...(provider === 'dynamic' && appId ? {loginLegacy} : {})}), [provider,appId,loginLegacy]); 
@@ -31,7 +34,7 @@ export default function AuthGateway({ appId, chainId, children, dynamicEnvironme
  const pendingLogin = useRef<false | 'x' | 'email'>(false);
  const requestLogin = useCallback(() => { pendingLogin.current = 'x'; setOpening(true); setEnabled(true); }, []);
  const requestBackup = useCallback(() => { pendingLogin.current = 'email'; setOpening(true); setEnabled(true); }, []);
- const deferred = useMemo<AuthSession>(() => ({ ready: true, authenticated: false, wallets: [], login: requestLogin, loginBackup: requestBackup, connectWallet: requestLogin, logout: async () => { localStorage.removeItem(`${SESSION_MARKER}.${provider}`); } }), [requestLogin, requestBackup]);
+ const deferred = useMemo<AuthSession>(() => ({ provider, ready: provider !== 'dynamic', authenticated: false, wallets: [], login: requestLogin, loginBackup: requestBackup, connectWallet: requestLogin, logout: async () => { localStorage.removeItem(`${SESSION_MARKER}.${provider}`); } }), [provider, requestLogin, requestBackup]);
  useEffect(() => {
   if (!session?.ready) return;
   if (session.authenticated) localStorage.setItem(`${SESSION_MARKER}.${provider}`, '1');
