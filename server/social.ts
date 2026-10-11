@@ -32,11 +32,11 @@ export async function verifySocial(url:string,apiKey=process.env.SOCIAL_DATA_API
  if(live)inFlight.set(id,task);
  try{const result=await task;if(live){cached[id]=result;persist();}return result;}finally{if(live)inFlight.delete(id);}
 }
-export function replyEligibility(reply:Verification,target:Verification,token:string,start:number,end:number,creatorX?:string):string|undefined {
+export function replyEligibility(reply:Verification,target:Verification,expectedX:string,start:number,end:number,creatorX?:string):string|undefined {
  if(reply.status!=='verified'||target.status!=='verified')return 'Public reply and original post must both be available.';
  if(reply.replyTo!==socialPostId(target.postUrl||''))return 'This must be a direct reply to the contest post, not another reply or a quote.';
  if(!reply.authorId||!/^\d+$/.test(reply.authorId))return 'The provider did not return a stable X user ID.';
  if(reply.authorId===target.authorId||reply.authorId===creatorX)return 'The organizer or original post author cannot enter.';
- if(!reply.text?.split(/\s+/).includes(token))return 'Include your personal verification code as a separate word in the reply.';
- const posted=Date.parse(reply.postedAt||'')/1000;if(!Number.isFinite(posted)||posted<start||posted>=end)return 'The reply must be posted after your code was issued and before the contest deadline.';
+ if(!/^\d+$/.test(expectedX)||reply.authorId!==expectedX)return 'Use the X account originally linked to Support Me.';
+ const posted=Date.parse(reply.postedAt||'')/1000;if(!Number.isFinite(posted)||posted<start||posted>=end)return 'The reply must be posted after the mission was published and before its deadline.';
 }

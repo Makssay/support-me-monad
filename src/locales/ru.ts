@@ -906,4 +906,12 @@ export const ru: Record<string, string> = {
   "Only your linked email can open this account.": "Для входа подходит только привязанная почта.",
   "Back to Support Me": "Вернуться в Support Me",
   "History": "История",
+  "Reply with your connected X account.": "Оставь реплай с подключённого X-аккаунта.",
+  "Publish a direct reply during the mission, then paste its URL. X API checks that the reply belongs to your connected X account.": "Опубликуй прямой реплай в период задания и вставь ссылку. X API проверит, что реплай написан с твоего подключённого X-аккаунта.",
+  "Only direct replies from the connected X account, posted during the mission, can enter. Maximum 256 entries; up to 20 equal prizes.": "Участвуют только прямые реплаи с подключённого X-аккаунта, опубликованные в период задания. Максимум 256 участников и до 20 одинаковых призов.",
+  "X API confirms the reply belongs to your connected X account, the target post and publication date. AI is optional; Pyth selects winners randomly.": "X API проверяет автора реплая по подключённому X-аккаунту, исходный пост и дату публикации. AI можно добавить для оценки содержания; Pyth выбирает победителей случайно.",
+  "Direct reply, connected X account and publication date verified. Entry grants a chance to win, not guaranteed payment.": "Прямой реплай, подключённый X-аккаунт и дата публикации подтверждены. Участие даёт шанс на победу без гарантированной выплаты.",
+  "The reply must be posted after the mission was published and before its deadline.": "Реплай должен быть опубликован после создания задания и до его дедлайна.",
+  "Sign in with your connected X account before verifying a reply.": "Перед проверкой реплая войди через свой подключённый X-аккаунт.",
+  "Mission publication could not be verified. Retry shortly.": "Не удалось проверить время создания задания. Повтори попытку чуть позже.",
 };

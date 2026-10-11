@@ -20,10 +20,13 @@ test('Reply evidence is scoped to the requested thread independently of reward f
 const target={status:'verified' as const,checkedAt:'',postUrl:'https://x.com/creator/status/10',authorId:'99',text:'Original'};
 const reply={status:'verified' as const,checkedAt:'',postUrl:url,authorId:'1',replyTo:'10',text:'Useful response SM-code',postedAt:'2026-10-08T12:00:00Z',note:''};
 const original={...target,note:''};
-test('Reply eligibility validates direct parent, ownership code, author and time',()=>{
+test('Reply eligibility validates direct parent, connected X identity and mission publication time',()=>{
  const start=Date.parse('2026-10-08T11:59:00Z')/1000;const end=start+3600;
- assert.equal(replyEligibility(reply,original,'SM-code',start,end),undefined);
- for(const data of [{...reply,replyTo:'11'},{...reply,text:'Stolen reply'},{...reply,authorId:'99'},{...reply,postedAt:'2026-10-08T10:00:00Z'},{...reply,postedAt:'bad'},{...reply,authorId:undefined}])assert.ok(replyEligibility(data,original,'SM-code',start,end));
- assert.ok(replyEligibility(reply,original,'SM-code',start,end,'1'));
- assert.ok(replyEligibility({...reply,text:'NotSM-code'},original,'SM-code',start,end));
+ assert.equal(replyEligibility(reply,original,'1',start,end),undefined);
+ for(const data of [{...reply,replyTo:'11'},{...reply,authorId:'2'},{...reply,authorId:'99'},{...reply,postedAt:'2026-10-08T10:00:00Z'},{...reply,postedAt:'bad'},{...reply,authorId:undefined}])assert.ok(replyEligibility(data,original,'1',start,end));
+ assert.ok(replyEligibility(reply,original,'1',start,end,'1'));
+ assert.equal(replyEligibility({...reply,text:'A useful reply without any code'},original,'1',start,end),undefined);
+ assert.ok(replyEligibility(reply,original,'',start,end));
+ assert.equal(replyEligibility({...reply,postedAt:new Date(start*1000).toISOString()},original,'1',start,end),undefined);
+ assert.ok(replyEligibility({...reply,postedAt:new Date(end*1000).toISOString()},original,'1',start,end));
 });
