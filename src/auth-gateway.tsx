@@ -3,6 +3,12 @@ import { Component, lazy, Suspense, useCallback, useEffect, useMemo, useRef, use
 import { AppProvider, type AuthSession } from './state';
 const PrivyAuth = lazy(() => import('./privy'));
 const SESSION_MARKER = 'support.privy-session';
+// A first-time OAuth return has no saved session yet. Mount the SDK so it can
+// consume and verify the callback; URL parameters themselves never grant access.
+const hasOAuthReturn = () => {
+ const params = new URLSearchParams(window.location.search);
+ return ['privy_oauth_state', 'privy_oauth_provider', 'privy_oauth_code'].some(key => params.has(key));
+};
 class AuthBoundary extends Component<{ children: ReactNode; onFailure: () => void }, { failed: boolean }> {
  state = { failed: false };
  static getDerivedStateFromError() { return { failed: true }; }
@@ -12,7 +18,7 @@ class AuthBoundary extends Component<{ children: ReactNode; onFailure: () => voi
 // Keep the public product mounted while authentication loads separately.
 // This marker is only a boolean hint; Privy remains the authority for the session.
 export default function AuthGateway({ appId, chainId, children }: { appId: string; chainId:number; children: ReactNode }) { useLocale(); 
- const [enabled, setEnabled] = useState(() => localStorage.getItem(SESSION_MARKER) === '1');
+ const [enabled, setEnabled] = useState(() => hasOAuthReturn() || localStorage.getItem(SESSION_MARKER) === '1');
  const [session, setSession] = useState<AuthSession>();
  const [opening, setOpening] = useState(false);
  const pendingLogin = useRef<false | 'x' | 'email'>(false);
