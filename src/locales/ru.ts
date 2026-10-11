@@ -1,5 +1,11 @@
 // Interface copy only. Creator-authored text and signing payloads are unchanged.
 export const ru: Record<string, string> = {
+ "Custom builder": "Конструктор",
+ "Your own payment formats and flexible settings. Coming soon.": "Свои форматы выплат и гибкие настройки. Скоро.",
+ "Change template": "Другой шаблон",
+ "AI verification": "AI-проверка",
+ "Review contributions against your criteria. Coming soon; no AI checks or AI fees for this mission.": "Проверка работ по твоим критериям. Скоро; в этом задании AI не запускается и не увеличивает комиссию.",
+ "Choose an available template.": "Выбери доступный шаблон.",
  "Reward currency and test settings": "Валюта награды и тестовый режим",
  "Review timing": "Срок проверки работ",
  "LESS SETUP. MORE GOOD WORK.": "МЕНЬШЕ НАСТРОЕК. БОЛЬШЕ ПОЛЬЗЫ.",

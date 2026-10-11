@@ -28,8 +28,12 @@ test('All templates validate, review, preserve edits and publish safely',async({
   await expect(page.getByRole('region',{name:'Your payment breakdown'})).toBeVisible();await page.getByRole('button',{name:'Back',exact:true}).click();
   await expect(page.getByLabel('Reward per contribution',{exact:true})).toHaveValue('0.02');
   if(item.id==='meme'){await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:'test-results/template-mobile.png',fullPage:true});await page.setViewportSize({width:1440,height:1000});}
-  await page.getByRole('button',{name:'Use full builder',exact:true}).click();await expect(page.getByLabel('Kind of contribution')).toHaveValue(item.category);
-  await expect(page.locator(`[data-payment-mode="${item.mode}"]`)).toHaveAttribute('aria-pressed','true');
+  await expect(page.getByLabel('AI verification SOON',{exact:false})).toBeDisabled();
+  await expect(page.getByLabel('AI verification SOON',{exact:false})).not.toBeChecked();
+  await expect(page.getByLabel('Kind of contribution')).toHaveCount(0);
+  await page.getByRole('button',{name:'Change template',exact:true}).click();
+  await expect(page.locator('.template-soon')).toBeDisabled();
+  await expect(page.locator('.mission-form')).toHaveCount(0);
  }
  expect(sends).toBe(0);await page.goto('/create');await page.screenshot({path:'test-results/template-picker-desktop.png',fullPage:true});
  await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:'test-results/template-picker-mobile.png',fullPage:true});
@@ -37,6 +41,8 @@ test('All templates validate, review, preserve edits and publish safely',async({
  await page.getByLabel('Mission title',{exact:true}).fill('Template funded meme mission');await page.getByRole('button',{name:'Review mission',exact:true}).click();
  allowPayment=true;await page.getByRole('button',{name:'Publish & fund mission',exact:true}).click();await expect(page).toHaveURL(/\/mission\/\d+$/);expect(sends).toBe(1);
  await expect(page.getByRole('heading',{name:'Template funded meme mission',exact:true})).toBeVisible();
+ const snapshot=await(await page.request.get('/api/state')).json();const funded=snapshot.missions.find((m:any)=>m.id===Number(page.url().split('/').pop()));
+ expect(funded.mode).toBe(0);expect(funded.aiReview).toBe(false);expect(funded.aiModel).toBe('');expect(funded.aiRubric).toBe('');
  await rpc.send('evm_increaseTime',[11*86400]);await rpc.send('evm_mine',[]);await page.request.post('/api/refresh');await page.reload();
  await page.getByRole('button',{name:'Close & refund remaining MON',exact:true}).click();await page.getByRole('button',{name:'Confirm close & refund',exact:true}).click();await expect(page.getByText('Closed',{exact:true})).toBeVisible();
  await page.evaluate(()=>localStorage.setItem('support.locale','ru'));await page.goto('/create');

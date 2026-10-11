@@ -1,1 +1,14 @@
-{"model":"google/gemini-3.1-flash-lite-image","sourceReference":"../login-mascot.webp","generatedFor":"Support Me mission templates","assets":["reply.webp","meme.webp","feedback.webp","content.webp","bug.webp"]}
+{
+  "model": "google/gemini-3.1-flash-lite-image",
+  "sourceReference": "../login-mascot.webp",
+  "generatedFor": "Support Me mission templates",
+  "assets": [
+    "reply.webp",
+    "meme.webp",
+    "feedback.webp",
+    "content.webp",
+    "bug.webp",
+    "builder.webp"
+  ],
+  "latestEditsCostUsd": 0.0678275
+}
