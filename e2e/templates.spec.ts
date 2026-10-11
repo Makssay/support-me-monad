@@ -27,6 +27,12 @@ test('All templates validate, review, preserve edits and publish safely',async({
    await page.getByRole('button',{name:'Review mission',exact:true}).click();await expect(page.getByRole('alert')).toContainText('Enter a valid NFT contract address.');
    await page.getByLabel('NFT collection contract on this network').fill(JSON.parse(fs.readFileSync('.data/local-community-nft.json','utf8')).address);
   }
+  if(item.id==='token'){
+   await expect(page.getByLabel('NFT standard')).toHaveCount(0);await expect(page.getByLabel('Discord requirement')).toHaveCount(0);
+   await page.getByLabel('Token contract on this network').fill('bad');await page.getByRole('button',{name:'Review mission',exact:true}).click();await expect(page.getByRole('alert')).toContainText('Enter a valid token contract address.');
+   await page.getByLabel('Token contract on this network').fill(JSON.parse(fs.readFileSync('.data/local-reward-token.json','utf8')).address);
+   await page.getByLabel('Minimum token balance').fill('0');await page.getByRole('button',{name:'Review mission',exact:true}).click();await expect(page.getByRole('alert')).toContainText('Enter a positive minimum token balance.');await page.getByLabel('Minimum token balance').fill('1.25');
+  }
   if(item.id==='reply'){
    await page.getByLabel('Contest post URL').fill('https://example.com/not-a-post');await page.getByRole('button',{name:'Review mission',exact:true}).click();
    await expect(page.getByRole('alert')).toContainText('Use a public X post URL');await page.getByLabel('Contest post URL').fill('https://x.com/creator/status/1234567890');

@@ -9,8 +9,10 @@
     "content.webp",
     "bug.webp",
     "builder.webp",
-    "nft.webp"
+    "nft.webp",
+    "token.webp"
   ],
   "latestEditsCostUsd": 0.0678275,
-  "nftExplorationCostUsd": 0.172543
+  "nftExplorationCostUsd": 0.172543,
+  "tokenExplorationCostUsd": 0.10492475
 }

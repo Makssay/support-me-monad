@@ -1,8 +1,9 @@
 import { getAddress, keccak256, toUtf8Bytes } from 'ethers';
 export type DiscordRule={kind:'member'|'role'|'list';guildId?:string;roleId?:string;ids?:string[]};
 export type NFTRule={kind:'hold'|'list'|'top';contract?:string;standard?:'721'|'1155';tokenId?:string;minimum?:string;addresses?:string[];top?:number;snapshotId?:string};
-export interface CommunityPolicy {discord?:DiscordRule;nft?:NFTRule;xBlue?:true;}
-export interface CommunitySummary {hash:string;xBlue?:true;finalized?:boolean;eligibleCount?:number;discord?:{kind:DiscordRule['kind'];guildId?:string;roleId?:string;count?:number};nft?:{kind:NFTRule['kind'];contract?:string;standard?:'721'|'1155';tokenId?:string;minimum?:string;count?:number;top?:number;block?:number;timestamp?:number};recheck:boolean;recoveryWindow:number;}
+export type TokenRule={contract:string;minimum:string};
+export interface CommunityPolicy {discord?:DiscordRule;nft?:NFTRule;token?:TokenRule;xBlue?:true;}
+export interface CommunitySummary {hash:string;xBlue?:true;finalized?:boolean;eligibleCount?:number;token?:TokenRule;discord?:{kind:DiscordRule['kind'];guildId?:string;roleId?:string;count?:number};nft?:{kind:NFTRule['kind'];contract?:string;standard?:'721'|'1155';tokenId?:string;minimum?:string;count?:number;top?:number;block?:number;timestamp?:number};recheck:boolean;recoveryWindow:number;}
 export const communityMessage=(purpose:string,chainId:number,ledger:string,wallet:string,timestamp:number,id:number|string='')=>`Support Me\n${purpose}\nChain ${chainId}\nLedger ${ledger.toLowerCase()}\nWallet ${wallet.toLowerCase()}\nMission ${id}\nTime ${timestamp}`;
 export function parseParticipantList(input:string,kind:'wallet'|'discord'){
  if(new TextEncoder().encode(input).length>512000)throw new Error('Participant file exceeds 500 KB.');
@@ -27,7 +28,8 @@ export function validatePolicy(input:any):CommunityPolicy {
    else{if(!['721','1155'].includes(n.standard))throw new Error('Choose an NFT standard.');const minimum=String(n.minimum||'1');if(!/^\d{1,78}$/.test(minimum)||BigInt(minimum)<1n||BigInt(minimum)>2n**256n-1n)throw new Error('Invalid minimum NFT balance.');let tokenId=String(n.tokenId||'0');if(!/^\d{1,78}$/.test(tokenId)||BigInt(tokenId)>2n**256n-1n)throw new Error('Invalid NFT token ID.');p.nft={kind:'hold',contract,standard:n.standard,minimum,...(n.standard==='1155'?{tokenId}:{})};}}
  }
  if(input.xBlue!==undefined){if(input.xBlue!==true)throw new Error('Invalid X checkmark requirement.');p.xBlue=true;}
- if(!p.discord&&!p.nft&&!p.xBlue)throw new Error('Choose a community requirement.');return p;
+ if(input.token){let contract:string;try{contract=getAddress(input.token.contract).toLowerCase();}catch{throw new Error('Enter a valid token contract address.');}if(contract==='0x'+'0'.repeat(40))throw new Error('Enter a valid token contract address.');const minimum=String(input.token.minimum??'');if(!/^(0|[1-9]\d{0,77})(\.\d{1,36})?$/.test(minimum)||!/[1-9]/.test(minimum))throw new Error('Enter a positive minimum token balance.');p.token={contract,minimum:minimum.includes('.')?minimum.replace(/0+$/,'').replace(/\.$/,''):minimum};}
+ if(!p.discord&&!p.nft&&!p.token&&!p.xBlue)throw new Error('Choose a community requirement.');return p;
 }
 export function tierForCommunity(policy?:CommunityPolicy){return policy?.xBlue||policy?.nft?.kind==='top'?1:0;}
 export function selectTopHolders(holders:{address:string;quantity:number}[],top:number,seed?:string){

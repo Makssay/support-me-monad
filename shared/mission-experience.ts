@@ -36,7 +36,7 @@ export function rewardTerms(m: Pick<Mission,'mode'|'automation'|'recoveryAt'>) {
 }
 
 export function accessFailureKind(message:string):'denied'|'unavailable'|'action' {
- if(['Your linked X account does not have the required blue checkmark.','Your Discord account does not meet the published requirement.','Your NFT wallet does not meet the published requirement.'].includes(message))return 'denied';
+ if(['Your linked X account does not have the required blue checkmark.','Your Discord account does not meet the published requirement.','Your NFT wallet does not meet the published requirement.','Your wallet does not meet the minimum token balance.'].includes(message))return 'denied';
  if(/unavailable|temporarily|not configured|Failed to fetch|fetch failed|NetworkError|rate.limit|Too many|paused/i.test(message))return 'unavailable';
  return 'action';
 }
