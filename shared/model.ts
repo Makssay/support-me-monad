@@ -1,7 +1,7 @@
 export const CHAIN_ID = 10143;
 export const EXPLORER = 'https://testnet.monadscan.com';
 export const PUBLIC_RPC = 'https://testnet-rpc.monad.xyz';
-export const categories = ['All missions', 'Memes', 'Feedback', 'Social content', 'Replies', 'Bug hunting', 'NFT holders', 'Token holders'] as const;
+export const categories = ['All missions', 'Memes', 'Feedback', 'Social content', 'Replies', 'Bug hunting', 'NFT holders', 'Token holders', 'Wallet list'] as const;
 export type Category = typeof categories[number];
 export const paymentModes = ['Creator choice', 'Paid report slots', 'Selected contributor', 'Bug bounty', 'Raffle', 'AI judged contest', 'Raffle'] as const;
 export function defaultMode(category: string) { return category === 'Replies' ? 4 : category === 'Feedback' ? 1 : category === 'Social content' ? 2 : category === 'Bug hunting' ? 3 : 0; }

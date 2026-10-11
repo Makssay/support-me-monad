@@ -33,6 +33,17 @@ test('All templates validate, review, preserve edits and publish safely',async({
    await page.getByLabel('Token contract on this network').fill(JSON.parse(fs.readFileSync('.data/local-reward-token.json','utf8')).address);
    await page.getByLabel('Minimum token balance').fill('0');await page.getByRole('button',{name:'Review mission',exact:true}).click();await expect(page.getByRole('alert')).toContainText('Enter a positive minimum token balance.');await page.getByLabel('Minimum token balance').fill('1.25');
   }
+  if(item.id==='wallet'){
+   await expect(page.getByLabel('NFT standard')).toHaveCount(0);await expect(page.getByLabel('Discord requirement')).toHaveCount(0);
+   const upload=page.locator('input[type="file"]');
+   await upload.setInputFiles({name:'wrong.json',mimeType:'application/json',buffer:Buffer.from('[]')});await expect(page.getByRole('alert')).toContainText('Use a TXT or CSV');
+   await upload.setInputFiles({name:'large.txt',mimeType:'text/plain',buffer:Buffer.alloc(512001,32)});await expect(page.getByRole('alert')).toContainText('500 KB');
+   await upload.setInputFiles({name:'wallets.txt',mimeType:'text/plain',buffer:Buffer.from(wallet.address+'\nwrong-address')});
+   await expect(page.getByRole('status').filter({hasText:'unique entries'})).toContainText('Invalid rows: 2');await page.getByRole('button',{name:'Review mission',exact:true}).click();await expect(page.getByRole('alert')).toContainText('Correct invalid rows');
+   await upload.setInputFiles({name:'wallets.csv',mimeType:'text/csv',buffer:Buffer.from('\uFEFFaddress\r\n"'+wallet.address+'"\r\n'+wallet.address+'\r\n')});
+   await expect(page.getByRole('alert')).toHaveCount(0);await expect(page.getByRole('status').filter({hasText:'unique entries'})).toContainText('1 unique entries · 1 duplicates');await expect(page.getByRole('link',{name:'Download CSV example'})).toHaveAttribute('download','');
+   await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:'test-results/wallet-list-create-mobile.png',fullPage:true});await page.setViewportSize({width:1440,height:1000});
+  }
   if(item.id==='reply'){
    await page.getByLabel('Contest post URL').fill('https://example.com/not-a-post');await page.getByRole('button',{name:'Review mission',exact:true}).click();
    await expect(page.getByRole('alert')).toContainText('Use a public X post URL');await page.getByLabel('Contest post URL').fill('https://x.com/creator/status/1234567890');
