@@ -914,4 +914,6 @@ export const ru: Record<string, string> = {
   "The reply must be posted after the mission was published and before its deadline.": "Реплай должен быть опубликован после создания задания и до его дедлайна.",
   "Sign in with your connected X account before verifying a reply.": "Перед проверкой реплая войди через свой подключённый X-аккаунт.",
   "Mission publication could not be verified. Retry shortly.": "Не удалось проверить время создания задания. Повтори попытку чуть позже.",
+  "Wallet confirmation is taking longer than expected. If its window disappeared, check My missions before refreshing. Do not submit the payment again blindly.": "Подтверждение кошелька затянулось. Если окно исчезло, проверь «Мои задания» перед обновлением страницы. Не отправляй оплату повторно вслепую.",
+  "A previous wallet request is unresolved. Check My missions and your wallet activity before refreshing; do not pay again blindly.": "Предыдущий запрос кошелька ещё не завершён. Проверь «Мои задания» и историю кошелька перед обновлением страницы; не оплачивай повторно вслепую.",
 };

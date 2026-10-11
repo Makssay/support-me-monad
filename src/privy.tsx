@@ -6,11 +6,16 @@ import { defineChain } from 'viem';
 import { CHAIN_ID, EXPLORER, PUBLIC_RPC } from '../shared/model';
 import { type AuthSession, type AuthWallet } from './state';
 import { embeddedAddress, legacyWalletsToUnlink } from './support-wallet-policy';
+import { WalletRequest } from './wallet-request';
 const monad = defineChain({ id: CHAIN_ID, name: 'Monad Testnet', nativeCurrency: { name: 'MON', symbol: 'MON', decimals: 18 }, rpcUrls: { default: { http: [PUBLIC_RPC] } }, blockExplorers: { default: { name: 'Monadscan', url: EXPLORER } }, testnet: true });
 function WalletBridge({ onSession }: { onSession: (auth: AuthSession) => void }) { useLocale(); 
  const { ready, authenticated, user, login, logout, linkTwitter, linkEmail, getAccessToken } = usePrivy();
  const { wallets, ready: walletsReady } = useWallets();
- const { sendTransaction } = useSendTransaction(); const { createWallet } = useCreateWallet();
+ const walletRequest = useRef(new WalletRequest());
+ const { sendTransaction } = useSendTransaction({
+  onSuccess: ({hash}) => walletRequest.current.success(hash),
+  onError: code => walletRequest.current.failure(Object.assign(new Error('Wallet confirmation did not complete.'), {code: /cancel|exit|reject/i.test(String(code)) ? 'ACTION_REJECTED' : 'WALLET_REQUEST_FAILED'}))
+ }); const { createWallet } = useCreateWallet();
  const emailLogin = useLoginWithEmail();
  const [membership, setMembership] = useState<{ id: string; member: NonNullable<AuthSession['member']> }>();
  const [error, setError] = useState(''); const [needsX, setNeedsX] = useState(false);
@@ -78,7 +83,7 @@ function WalletBridge({ onSession }: { onSession: (auth: AuthSession) => void })
  const allowedWallets = useMemo<AuthWallet[]>(() => member ? wallets.filter(w => w.walletClientType === 'privy' && w.address.toLowerCase() === supportAddress?.toLowerCase()).map(w => ({ address: w.address, label: 'Support Me wallet', getProvider: () => w.getEthereumProvider(), switchChain: (id: number) => w.switchChain(id),
   sendSponsored: w.walletClientType === 'privy' ? async (transaction: { to: string; data: string; value: bigint; chainId: number }) => {
    if (transaction.chainId !== CHAIN_ID) throw new Error('Only Monad Testnet sponsorship is supported.');
-   const { hash } = await sendTransaction(transaction, { address: w.address, sponsor: true }); return hash;
+   return walletRequest.current.run(() => sendTransaction(transaction, { address: w.address, sponsor: true, uiOptions: {showWalletUIs:true,isCancellable:true} }));
   } : undefined
  })) : [], [!!member, wallets, supportAddress, sendTransaction]);
  const auth = useMemo<AuthSession>(() => ({ ready: ready && walletsReady, authenticated, login: loginX, loginBackup, logout, connectWallet: retry, creatingWallet, linkX: linkTwitter, linkEmail, retry, getAccessToken, member, needsX, accountError: error, cleanupError, wallets: allowedWallets }), [ready, walletsReady, authenticated, loginX, loginBackup, logout, creatingWallet, linkTwitter, linkEmail, retry, getAccessToken, member, needsX, error, cleanupError, allowedWallets]);

@@ -20,6 +20,7 @@ export function AppProvider({ children, auth }: { children: ReactNode; auth?: Au
  const selected = useRef<Wallet | undefined>(undefined); const pending = useRef(false); const payoutLocks = useRef(0); const connected = useRef('');
  const [preferred, setPreferred] = useState(() => localStorage.getItem('support.privy-wallet') || '');
  const currentAuth = useRef(auth); currentAuth.current = auth;
+ const authWalletKey = auth?.wallets.map(w => w.address.toLowerCase()).join(',');
  async function load() { try { const r = await fetch('/api/state'); const data = await r.json(); if (!r.ok) throw new Error(data.error); setState(data); setConfig(data.config); setError(''); } catch { setError('We could not load Monad right now. Retry in a moment.'); } finally { setLoading(false); } }
  async function walletBalance(a = connected.current) { const wallet = selected.current; if (!a || !wallet) return; try { const p = new BrowserProvider(wallet); const [net, amount] = await Promise.all([p.getNetwork(), p.getBalance(a)]); if (selected.current !== wallet || connected.current !== a) return; setWrongChain(Number(net.chainId) !== config?.chainId); setBalance(formatEther(amount)); } catch { if (selected.current === wallet && connected.current === a) setBalance(''); } }
  async function refresh() {
@@ -59,7 +60,9 @@ export function AppProvider({ children, auth }: { children: ReactNode; auth?: Au
      await walletBalance(wallet.address);
    }).catch(() => { if (!cancelled) setNotice({ kind: 'error', text: 'Your wallet could not open. Sign out and try again.' }); });
    return () => { cancelled = true; };
- }, [auth?.ready, auth?.authenticated, auth?.wallets, preferred, config?.chainId]);
+ // SDK modal updates replace wallet wrapper objects. Reconnect only when the
+ // actual account changes; tearing down the provider can interrupt confirmation.
+ }, [auth?.ready, auth?.authenticated, authWalletKey, auth?.member?.xId, preferred, config?.chainId]);
  async function chooseWallet(a: string) { if (pending.current) return; localStorage.setItem('support.privy-wallet', a); setPreferred(a); }
  useEffect(() => { if (!selected.current) return; const wallet = selected.current; const accounts = (a: string[]) => { if (payoutLocks.current) return; const next = a[0] || ''; setAddress(next); connected.current = next; void walletBalance(next); }; const chain = () => { void walletBalance(); }; wallet.on?.('accountsChanged', accounts); wallet.on?.('chainChanged', chain); void walletBalance(); return () => { wallet.removeListener?.('accountsChanged', accounts); wallet.removeListener?.('chainChanged', chain); }; }, [address, config?.chainId]);
  function lockPayoutWallet() { payoutLocks.current++; let released = false; return () => { if (!released) { released = true; payoutLocks.current--; void walletBalance(); } }; }
@@ -91,6 +94,7 @@ export function AppProvider({ children, auth }: { children: ReactNode; auth?: Au
    pending.current = true; setBusy(true);
    const wallet = selected.current; const account = connected.current;
    let sentHash = '';
+   const confirmationTimer=setTimeout(()=>{if(!sentHash)setNotice({kind:'pending',text:'Wallet confirmation is taking longer than expected. If its window disappeared, check My missions before refreshing. Do not submit the payment again blindly.'});},45000);
    const authWallet = currentAuth.current?.wallets.find(w => w.address.toLowerCase() === account.toLowerCase());
    const sponsored = !!(config.gasSponsorship && authWallet?.sendSponsored);
    try {
@@ -114,18 +118,19 @@ export function AppProvider({ children, auth }: { children: ReactNode; auth?: Au
        }),
        getSigner: () => provider.getSigner(account),
        waitForReceipt: hash => provider.waitForTransaction(hash, 1, 90000),
-       onSent: hash => { sentHash = hash; setNotice({ kind: 'pending', text: `${label} is confirming on Monad.`, tx: hash }); }
+       onSent: hash => { clearTimeout(confirmationTimer); sentHash = hash; setNotice({ kind: 'pending', text: `${label} is confirming on Monad.`, tx: hash }); }
      });
      setNotice({ kind: 'success', text: `${label} confirmed.${sponsored ? ' Gas covered by Support Me.' : ''}`, tx: receipt.hash }); await refresh(); return receipt;
    } catch (e: any) {
      if (e instanceof TransactionPreflightError) { setNotice({ kind: 'error', text: e.message, values: e.values }); return; }
      const text = sentHash && e.receipt?.status === 0 ? 'The transaction reverted. No contract changes were saved; the network fee was charged.' : sentHash ? 'We could not confirm this transaction succeeded. Check its status before submitting again.'
+       : e.code === 'WALLET_REQUEST_PENDING' ? 'A previous wallet request is unresolved. Check My missions and your wallet activity before refreshing; do not pay again blindly.'
        : e.code === 'ACTION_REJECTED' || e.code === 4001 ? 'You cancelled the transaction. Nothing changed.'
        : sponsored ? 'Gas sponsorship could not complete. Nothing was retried with your MON. Check the mission status and try again.'
        : e.code === 'INSUFFICIENT_FUNDS' ? 'You need more testnet MON for this action and gas. Get some from the faucet.'
        : 'Transaction could not be completed. Check your balance, account, and the latest mission status, then retry.';
      setNotice({ kind: 'error', text, tx: sentHash || undefined });
-   } finally { pending.current = false; setBusy(false); }
+   } finally { clearTimeout(confirmationTimer); pending.current = false; setBusy(false); }
  }
  return <AppContext.Provider value={{ state, config, loading, error, address, balance, wrongChain, walletOpen, setWalletOpen, connect, disconnect, refresh, transact, sign, apiFetch, notice, clearNotice: () => setNotice(undefined), busy, gasSponsored, auth, chooseWallet, lockPayoutWallet }}>{children}</AppContext.Provider>;
 }

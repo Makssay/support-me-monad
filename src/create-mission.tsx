@@ -22,6 +22,8 @@ export default function CreateMission() { useLocale();
  const { address, transact, busy, setWalletOpen, auth, config, sign, apiFetch, gasSponsored, state } = useApp();
  const navigate = useNavigate();
  const [step, setStep] = useState(0);
+ const publishing = useRef(false);
+ const [preparingPublication,setPreparingPublication] = useState(false);
  const [community,setCommunity]=useState<CommunityDraft>(emptyCommunity);
  let admissionPolicy:ReturnType<typeof draftPolicy>;let admissionError='';try{admissionPolicy=draftPolicy(community);}catch(e){admissionError=(e as Error).message;}
  const [title, setTitle] = useState('');
@@ -77,6 +79,8 @@ export default function CreateMission() { useLocale();
   if (step >= 2 && rubricError) { setError(rubricError); return; }
   if (step===1&&tokenMode&&!asset.address){setError('Check and select a token before continuing.');return;}
   if (step < 3) { changeStep(step + 1); return; }
+  if (publishing.current || busy) return;
+  publishing.current=true;setPreparingPublication(true);
   try {
    if (auth && !auth.member?.username) throw new Error('Your X profile is still loading. Please retry shortly.');
    const amount = parseUnits(reward,asset.decimals); const count = Number(slots);
@@ -116,6 +120,7 @@ export default function CreateMission() { useLocale();
     navigate(`/mission/${created.args.missionId}`);
    }
   } catch(e) { setError(e instanceof Error&&e.message.length<200?e.message:'Could not publish. Check your brief and reward settings, then retry.'); }
+  finally {publishing.current=false;setPreparingPublication(false);}
  }
  return <div className="page narrow-page create-page">
   <TransitionLink className="back-link" to="/"><ArrowLeft size={16}/>{t("All missions")}</TransitionLink>
@@ -168,7 +173,7 @@ export default function CreateMission() { useLocale();
     {step===3&&<FundingBreakdown budget={budget} symbol={asset.symbol} tokenMode={tokenMode} fee={platformFee} pyth={protectedMode&&[0,4,6].includes(mode)?(pythQuote?BigInt(pythQuote)*2n:undefined):0n} execution={protectedMode?parseEther('0.3'):0n} gasSponsored={gasSponsored}/>}
     {error && <p className="form-error" role="alert">{t(error)}</p>}
     {step>=2&&admissionError&&<p className="form-error" role="alert">{t(admissionError)}</p>}
-    <div className="wizard-actions"><button className="button secondary" type="button" disabled={busy || step === 0} onClick={() => changeStep(step-1)}><ArrowLeft size={17}/>{t("Back")}</button><button className="button primary" disabled={busy || (step>=2 && (!!rubricError||!!admissionError||mode===6&&!admissionPolicy))} type="submit">{step === 3 ? busy ? t("Publishing…") : t("Publish & fund mission") : t("Next")}<ArrowUpRight size={19}/></button></div>
+    <div className="wizard-actions"><button className="button secondary" type="button" disabled={busy || preparingPublication || step === 0} onClick={() => changeStep(step-1)}><ArrowLeft size={17}/>{t("Back")}</button><button className="button primary" disabled={busy || preparingPublication || (step>=2 && (!!rubricError||!!admissionError||mode===6&&!admissionPolicy))} type="submit">{step === 3 ? (busy || preparingPublication) ? t("Publishing…") : t("Publish & fund mission") : t("Next")}<ArrowUpRight size={19}/></button></div>
     <p className="form-footnote">{step === 3 ? tokenMode?t("Approve the exact token budget, then publish and fund. MON reserves are separate."):t("One transaction publishes the mission and funds its rewards. Wallet gas is additional.") : t("Your changes stay here as you move between steps. Funding happens only when you publish.")}</p>
    </form>
    <aside className="funding-preview"><div className="preview-eyebrow"><span>{t("MISSION REWARDS")}</span><Gift size={27}/></div><h3>{t("A little support goes a long way.")}</h3><div className="big-budget">{num(budget)}<span>{asset.symbol}</span><small>{t("Total prize pool")}</small></div><dl><div><dt><Trophy size={19}/>{t("Per reward")}</dt><dd>{num(reward || 0)} {asset.symbol}</dd></div><div><dt><ShieldCheck size={19}/>{t("Reward places")}</dt><dd>{slots || 0}</dd></div><div><dt><Ticket size={19}/>{t("Payment format")}</dt><dd>{t(paymentModes[mode])}</dd></div></dl><div className="preview-note"><ShieldCheck size={18}/><p>{t([4,6].includes(mode)?"Winners are drawn randomly with Pyth. Access requirements decide who can enter, not who wins.":mode===5?"The fixed AI rubric determines the winners. Your criteria cannot change after funding.":"Rewards are funded upfront. The published rules determine who gets paid.")}</p></div><small>{t("Terms and budget are fixed when published. No independent jury or dispute resolution in this MVP.")}</small></aside>
