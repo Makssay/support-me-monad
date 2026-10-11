@@ -31,10 +31,12 @@ test('Two wallets complete the mission, payout, reputation and refund flow', asy
  await page.locator('.template-tile').nth(1).click();
  await expect(page.getByLabel('Your creator name')).toHaveCount(0);
  await expect(page.locator('.creator-identity')).toContainText('@creator_qa');
- await page.getByLabel('Mission title').fill('Make a useful launch meme');
+ await page.getByRole('textbox',{name:'Mission title',exact:true}).fill('Make a useful launch meme');
  await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:'test-results/create-basic-desktop.png',fullPage:true});
+ await page.getByRole('button',{name:'Next',exact:true}).click();
  await page.getByLabel('Reward per contribution', { exact: true }).fill('0.01'); await page.getByLabel('Reward slots', { exact: true }).fill('1');
  await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:'test-results/create-reward-desktop.png',fullPage:true});
+ await page.getByRole('button',{name:'Next',exact:true}).click();
  await page.getByLabel('The brief', { exact: true }).fill('Create one original meme for our creator launch. Keep it friendly and useful.'); await page.getByLabel('What makes a great contribution?').fill('Original caption, clear concept, public post if published.'); await page.getByLabel('Require a public X / Twitter post link').check();
  await page.getByRole('button',{name:'Review mission',exact:true}).click();
  await expect(page.locator('.mission-review')).toContainText('0.5 MON');await expect(page.getByRole('region',{name:'Your payment breakdown'})).toBeVisible();await expect(page.getByText('Total due now',{exact:true})).toBeVisible();
@@ -52,7 +54,7 @@ test('Two wallets complete the mission, payout, reputation and refund flow', asy
  const before = BigInt(await p.send('eth_getBalance', [wallets[1].address, 'latest']));
  const payButton = page.getByRole('button', { name: 'Approve & pay 0.01 MON', exact: true }); await expect(payButton).toBeDisabled(); await page.getByLabel('I checked the work and authorship').check(); await payButton.click(); await expect(page.getByText('0.01 MON paid on Monad', { exact: true })).toBeVisible();
  const after = BigInt(await p.send('eth_getBalance', [wallets[1].address, 'latest'])); expect(formatEther(after - before)).toBe('0.01'); await expect(page.getByRole('link', { name: 'Payout receipt' })).toHaveAttribute('href', /0x[0-9a-f]{64}$/);
- await page.getByRole('link', { name: 'Local Contributor' }).click(); await expect(page.getByRole('heading', { name: 'Local Contributor', exact: true })).toBeVisible(); await expect(page.locator('.signal-badge strong')).toHaveText(String(initialScore+15)); await expect(page.locator('.profile-stats').getByText('0.01', { exact: false })).toBeVisible();
+ await page.locator('.contribution-head').getByRole('link', { name: 'Local Contributor' }).click(); await expect(page.getByRole('heading', { name: 'Local Contributor', exact: true })).toBeVisible(); await expect(page.locator('.signal-badge strong')).toHaveText(String(initialScore+15)); await expect(page.locator('.profile-stats').getByText('0.01', { exact: false })).toBeVisible();
  await page.screenshot({ path: 'test-results/profile-desktop.png', fullPage: true });
  await page.goto('/activity'); await expect(page.locator('.leaderboard-row').first()).toContainText('Local Contributor');
  await page.goto(missionUrl); await page.getByRole('button', { name: 'Close & refund remaining MON', exact: true }).click(); await page.getByRole('button', { name: 'Confirm close & refund', exact: true }).click(); await expect(page.getByText('Closed', { exact: true })).toBeVisible();await expect(page.getByRole('region',{name:'Public result'})).toBeVisible();

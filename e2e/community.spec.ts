@@ -17,9 +17,12 @@ for(const kind of ['nft','token','wallet'] as const)test(kind+' template: holder
  await page.getByRole('button',{name:kind==='wallet'?/^Wallet list giveaway/:kind==='nft'?/^NFT holder giveaway/:/^Token holder giveaway/}).click();
  const nft=JSON.parse(fs.readFileSync(kind==='nft'?'.data/local-community-nft.json':'.data/local-reward-token.json','utf8'));
  if(kind==='token')await(await new Contract(nft.address,['function mint(address,uint256)'],creator).mint(nftOwner.address,2250000n)).wait();
- await page.getByLabel('Mission title').fill('Our holder giveaway');if(kind==='wallet')await page.getByLabel('Wallet addresses',{exact:true}).fill(nftOwner.address);else await page.getByLabel(kind==='nft'?'NFT collection contract on this network':'Token contract on this network').fill(nft.address);
- if(kind!=='wallet')await page.getByLabel(kind==='nft'?'Minimum NFT balance':'Minimum token balance').fill(kind==='nft'?'2':'2.25');await page.getByLabel('Reward slots',{exact:true}).fill('1');
+ await page.getByRole('textbox',{name:'Mission title',exact:true}).fill('Our holder giveaway');
+ await page.getByRole('button',{name:'Next',exact:true}).click();
+ await page.getByLabel('Reward slots',{exact:true}).fill('1');
  await page.getByText('Reward currency and test settings',{exact:true}).click();await page.getByLabel('Quick test · every stage is 5 minutes').check();
+ await page.getByRole('button',{name:'Next',exact:true}).click();if(kind==='wallet')await page.getByLabel('Wallet addresses',{exact:true}).fill(nftOwner.address);else await page.getByLabel(kind==='nft'?'NFT collection contract on this network':'Token contract on this network').fill(nft.address);
+ if(kind!=='wallet')await page.getByLabel(kind==='nft'?'Minimum NFT balance':'Minimum token balance').fill(kind==='nft'?'2':'2.25');
  await page.getByRole('button',{name:'Review mission',exact:true}).click();await expect(page.locator('.mission-review')).toContainText(kind==='token'?'Token holder requirements':'Wallet / NFT requirement');
  await page.getByRole('button',{name:'Publish & fund mission',exact:true}).click();await page.waitForURL(/\/mission\/\d+$/);
 

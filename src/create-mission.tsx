@@ -17,7 +17,7 @@ import abi from '../shared/abi.json';
 import { AI_MODEL, AI_VERSION, DEFAULT_RUBRIC, MAX_AI_CRITERIA, parseRubric } from '../shared/ai';
 import { StepTransition, TransitionLink } from './view-transitions';
 
-const steps = ['Basic info', 'Reward', 'Details', 'Review'];
+const steps = ['Mission title', 'Reward', 'Details', 'Review'];
 const num = (value: string | number) => localizedNumber(value);
 
 export default function CreateMission() { useLocale(); 
@@ -32,7 +32,7 @@ export default function CreateMission() { useLocale();
   setCommunity(next.id==='wallet'?{...emptyCommunity,nft:'list'}:next.id==='nft'?{...emptyCommunity,nft:'hold'}:next.id==='token'?{...emptyCommunity,token:true,tokenContract:'',tokenMinimum:'1'}:emptyCommunity);setAsset(nativeReward);setTokenInput('');setTokenError('');setTokenBalance('');
   tokenRequest.current++;setCheckingToken(false);setReward('0.01');setSlots('3');setDays('7');setReviewDays('3');setWorkHours('24');setQuick(false);
  }
- const compact=!!template&&step!==3;
+ const [stepDirection,setStepDirection]=useState(1);
  const publishing = useRef(false);
  const [preparingPublication,setPreparingPublication] = useState(false);
  const [community,setCommunity]=useState<CommunityDraft>(emptyCommunity);
@@ -81,7 +81,9 @@ export default function CreateMission() { useLocale();
  try { budget = formatUnits(parseUnits(reward || '0',asset.decimals) * BigInt(Number(slots) || 0),asset.decimals); } catch {}
  function changeStep(next: number) {
   setError('');
+  setStepDirection(next>=step?1:-1);
   setStep(next);
+  requestAnimationFrame(()=>document.getElementById('custom-mission')?.scrollIntoView({block:'start',behavior:'instant'}));
  }
  async function submit(event: FormEvent<HTMLFormElement>) {
   event.preventDefault(); setError('');
@@ -90,11 +92,11 @@ export default function CreateMission() { useLocale();
   if(template.id==='token'&&!community.token){setError('Choose a community requirement.');return;}
   if(template.id==='wallet'&&community.nft!=='list'){setError('Choose a community requirement.');return;}
   if(template.id==='nft'&&community.nft!=='hold'){setError('Choose a community requirement.');return;}
-  if((compact||step>=2)&&admissionError){setError(admissionError);return;}
-  if((compact||step>=2)&&mode===6&&!admissionPolicy){setError('Choose a community requirement.');return;}
-  if ((compact||step >= 2) && rubricError) { setError(rubricError); return; }
-  if ((compact||step===1)&&tokenMode&&!asset.address){setError('Check and select a token before continuing.');return;}
-  if (step < 3) { changeStep(template?3:step + 1); return; }
+  if((step>=2)&&admissionError){setError(admissionError);return;}
+  if((step>=2)&&mode===6&&!admissionPolicy){setError('Choose a community requirement.');return;}
+  if ((step >= 2) && rubricError) { setError(rubricError); return; }
+  if ((step>=1)&&tokenMode&&!asset.address){setError('Check and select a token before continuing.');return;}
+  if (step < 3) { changeStep(step + 1); return; }
   if (publishing.current || busy) return;
   publishing.current=true;setPreparingPublication(true);
   try {
@@ -144,8 +146,8 @@ export default function CreateMission() { useLocale();
   {!template&&<section className="template-picker" aria-labelledby="templates-heading"><div className="template-heading"><div><span className="preview-eyebrow">{t('LESS SETUP. MORE GOOD WORK.')}</span><h2 id="templates-heading">{t('Start with a template')}</h2><p>{t('Pick a goal. The payment format and checks are already set.')}</p></div></div><div className="template-grid">{missionTemplates.map(item=><button type="button" key={item.id} className="template-tile" onClick={()=>applyTemplate(item)}><img src={`/art/templates/${item.id}.webp`} alt="" width={480} height={480}/><span><strong>{t(item.title)}</strong><small>{t(item.summary)}</small></span><ArrowUpRight size={18}/></button>)}<button type="button" className="template-tile template-soon" disabled aria-describedby="builder-soon-description"><img src="/art/templates/builder.webp" alt="" width={480} height={480}/><span><strong>{t("Custom builder")} <b className="soon-badge">SOON</b></strong><small id="builder-soon-description">{t("Your own payment formats and flexible settings. Coming soon.")}</small></span></button></div><p className="template-hint">{t('Templates are editable starting points. Nothing is published or charged when you choose one.')}</p></section>}
   {template&&<div className="selected-template"><img src={`/art/templates/${template.id}.webp`} alt="" width={64} height={64}/><div><small>{t('YOUR TEMPLATE')}</small><strong>{t(template.title)}</strong><span>{t(template.summary)}</span></div><button className="button secondary" type="button" disabled={busy||preparingPublication} onClick={()=>{setTemplate(undefined);changeStep(0);}}>{t('Change template')}</button></div>}
   {!template?null:!address ? <div className="empty"><h3>{t("Make yourself part of it.")}</h3><p>{t("Sign in to create a mission and fund its rewards.")}</p><button className="button primary" onClick={() => setWalletOpen(true)}>{auth ? t("Sign in") : t("Connect wallet")}</button></div> : <div className="form-layout">
-   <form id="custom-mission" className={`mission-form ${compact?"template-form":""}`} onSubmit={submit}>
-    {!template&&<ol className="wizard-steps" aria-label={t("Mission creation progress")}>{steps.map((label,index) => <li key={label} aria-current={index === step ? 'step' : undefined}><span>{index+1}</span>{t(label)}</li>)}</ol>}
+   <form id="custom-mission" className="mission-form stepped-form" onSubmit={submit}>
+    <ol className="wizard-steps" aria-label={t("Mission creation progress")}>{steps.map((label,index) => <li key={label} aria-current={index === step ? 'step' : undefined}><span>{index+1}</span>{t(label)}</li>)}</ol>
     <div className="wizard-panels">{steps.map((label, panel) => { const content = <>
      <h2 id={`step-heading-${panel}`} ref={element => { if (element && panel === step) heading.current = element; }} tabIndex={-1}>{t(label)}</h2>
      {panel === 0 && <>
@@ -186,11 +188,11 @@ export default function CreateMission() { useLocale();
       <div><dt>{t("Reward & funding")}</dt><dd>{num(reward)} {asset.symbol} × {counted(Number(slots),"slot",["награда","награды","наград"])} = {num(budget)} {asset.symbol}</dd></div>{platformFee>0n&&<div><dt>{t("Platform creation fee")}</dt><dd>{num(formatEther(platformFee))} MON · {t("One-time, non-refundable after successful creation")}</dd></div>}<div><dt>{t("Submission window")}</dt><dd>{durationLabel} · {requireX ? t("Public X post required") : t("Social link optional")}</dd></div>
       {![4,6].includes(mode)&&<div><dt>{t("Review deadline")}</dt><dd>{quick?t("5 minutes"):counted(Number(reviewDays),"day",["день","дня","дней"])} · {protectedMode?t("Timeout protection enabled"):t("Creator review required")}</dd></div>}
      </dl>}
-    </>; return <fieldset key={label} className="wizard-panel" data-active={compact?panel<3:panel===step} disabled={compact?panel===3:panel!==step} inert={compact?panel===3:panel!==step} aria-hidden={compact?panel===3:panel!==step} aria-labelledby={`step-heading-${panel}`}>{panel === step ? <StepTransition step={step}><div className="wizard-step-content">{content}</div></StepTransition> : <div className="wizard-step-content">{content}</div>}</fieldset>; })}</div>
+    </>; return <fieldset key={label} className="wizard-panel" data-active={panel===step} disabled={panel!==step} inert={panel!==step} aria-hidden={panel!==step} aria-labelledby={`step-heading-${panel}`}>{panel === step ? <StepTransition step={step} direction={stepDirection}><div className="wizard-step-content">{content}</div></StepTransition> : <div className="wizard-step-content">{content}</div>}</fieldset>; })}</div>
     {step===3&&<FundingBreakdown budget={budget} symbol={asset.symbol} tokenMode={tokenMode} fee={platformFee} pyth={protectedMode&&[0,4,6].includes(mode)?(pythQuote?BigInt(pythQuote)*2n:undefined):0n} execution={protectedMode?parseEther('0.3'):0n} gasSponsored={gasSponsored}/>}
     {error && <p className="form-error" role="alert">{t(error)}</p>}
     {step>=2&&admissionError&&<p className="form-error" role="alert">{t(admissionError)}</p>}
-    <div className="wizard-actions"><button className="button secondary" type="button" disabled={busy || preparingPublication || step === 0} onClick={() => changeStep(template?0:step-1)}><ArrowLeft size={17}/>{t("Back")}</button><button className="button primary" disabled={busy || preparingPublication || (step>=2 && (!!rubricError||!!admissionError||mode===6&&!admissionPolicy))} type="submit">{step === 3 ? (busy || preparingPublication) ? t("Publishing…") : t("Publish & fund mission") : t(template?"Review mission":"Next")}<ArrowUpRight size={19}/></button></div>
+    <div className="wizard-actions"><button className="button secondary" type="button" disabled={busy || preparingPublication || step === 0} onClick={() => changeStep(step-1)}><ArrowLeft size={17}/>{t("Back")}</button><button className="button primary" disabled={busy || preparingPublication || (step>=2 && (!!rubricError||!!admissionError||mode===6&&!admissionPolicy))} type="submit">{step === 3 ? (busy || preparingPublication) ? t("Publishing…") : t("Publish & fund mission") : t(step===2?"Review mission":"Next")}<ArrowUpRight size={19}/></button></div>
     <p className="form-footnote">{step === 3 ? tokenMode?t("Approve the exact token budget, then publish and fund. MON reserves are separate."):t("One transaction publishes the mission and funds its rewards. Wallet gas is additional.") : t("Your changes stay here as you move between steps. Funding happens only when you publish.")}</p>
    </form>
    <aside className="funding-preview"><div className="preview-eyebrow"><span>{t("MISSION REWARDS")}</span><Gift size={27}/></div><h3>{t("A little support goes a long way.")}</h3><div className="big-budget">{num(budget)}<span>{asset.symbol}</span><small>{t("Total prize pool")}</small></div><dl><div><dt><Trophy size={19}/>{t("Per reward")}</dt><dd>{num(reward || 0)} {asset.symbol}</dd></div><div><dt><ShieldCheck size={19}/>{t("Reward places")}</dt><dd>{slots || 0}</dd></div><div><dt><Ticket size={19}/>{t("Payment format")}</dt><dd>{t(paymentModes[mode])}</dd></div></dl><div className="preview-note"><ShieldCheck size={18}/><p>{t([4,6].includes(mode)?"Winners are drawn randomly with Pyth. Access requirements decide who can enter, not who wins.":mode===5?"The fixed AI rubric determines the winners. Your criteria cannot change after funding.":"Rewards are funded upfront. The published rules determine who gets paid.")}</p></div><small>{t("Terms and budget are fixed when published. No independent jury or dispute resolution in this MVP.")}</small></aside>

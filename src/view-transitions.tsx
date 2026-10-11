@@ -7,11 +7,11 @@ export function RouteTransition({ path, children }: { path: string; children: Re
  return <div key={path} className="route-fade">{children}</div>;
 }
 
-export function StepTransition({ step, children }: { step: number; children: ReactNode }) {
+export function StepTransition({ step, direction = 1, children }: { step: number; direction?: number; children: ReactNode }) {
  const reduced = useReducedMotion();
  // Keep local step feedback independent of browser navigation and network retries.
- return <motion.div key={step} initial={reduced ? false : { opacity: 0, y: 4 }}
-  animate={{ opacity: 1, y: 0 }} transition={{ duration: reduced ? 0 : .16 }}>
+ return <motion.div key={step} initial={reduced ? false : { opacity: 0, transform: `translateX(${direction * 12}px)` }}
+  animate={{ opacity: 1, transform: 'translateX(0px)' }} transition={{ duration: reduced ? 0 : .2, ease: [.23, 1, .32, 1] }}>
   {children}
  </motion.div>;
 }

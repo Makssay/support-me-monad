@@ -1,0 +1,83 @@
+.stepped-form{scroll-margin-top:24px;overflow:clip}
+.stepped-form .wizard-steps{margin-bottom:30px;gap:8px}
+.stepped-form .wizard-steps li{display:flex;align-items:center;gap:10px;padding:0 2px 15px;font-size:12px;line-height:1.35}
+.stepped-form .wizard-steps span{display:grid;place-items:center;flex:none;width:32px;height:32px;margin:0;border:1px solid #665275;border-radius:50%;background:#251c34;color:#c8bad9;font-weight:700}
+.stepped-form .wizard-steps [aria-current=step]{font-weight:700;border-color:#a782ff}
+.stepped-form .wizard-steps [aria-current=step] span{background:linear-gradient(135deg,#a481ff,#7141f7);border-color:#b697ff;color:white;box-shadow:0 0 22px #8e54ff24}
+.stepped-form .wizard-panel h2{font-size:28px;margin-bottom:24px;outline:none}
+.stepped-form .wizard-actions{padding-top:22px;border-top:1px solid #493355;margin-top:24px}
+.mission-detail-page .detail-layout{grid-template-columns:minmax(0,1fr) 350px;gap:30px;align-items:start}
+.mission-detail-page .mission-intro{grid-template-columns:minmax(0,1fr) 240px;gap:24px;margin:10px 0 26px;min-height:200px}
+.mission-detail-page .mission-intro h1{font-size:clamp(32px,3.4vw,48px);line-height:1.1;margin:20px 0;letter-spacing:-1.5px}
+.mission-detail-page .mission-banner{aspect-ratio:1.6;height:auto;border-radius:12px}
+.mission-detail-page .detail-category>.mission-symbol{display:none}
+.mission-detail-page .detail-category>span:nth-child(2){display:inline-flex;align-items:center;padding:7px 12px;border:1px solid #54376f;background:#281737;border-radius:9px;color:#ceb0fa}
+.mission-detail-page .creator-link{margin-top:16px;font-size:13px}
+.mission-detail-page .creator-link .avatar{width:42px;height:42px}
+.mission-detail-page .mission-journey{padding:24px;border:1px solid #533b69;border-radius:12px;background:linear-gradient(120deg,#21172f9c,#100e1c);margin-bottom:24px}
+.mission-detail-page .journey-heading{gap:14px}
+.mission-detail-page .journey-dot{box-shadow:0 0 0 6px #aa77ff20;width:10px;height:10px}
+.mission-detail-page .journey-track{margin:30px 0 20px}
+.mission-detail-page .journey-track li{position:relative;border-top-width:4px;padding-top:17px}
+.mission-detail-page .journey-track li:before{content:'';position:absolute;left:0;top:-8px;width:12px;height:12px;border-radius:50%;background:#433453;border:2px solid #171020}
+.mission-detail-page .journey-track li.complete{border-color:#bc84f4;color:#ddbcff}
+.mission-detail-page .journey-track li.complete:before{background:#bc84f4}
+.mission-detail-page .journey-track li.current:before{background:#f0e3ff;box-shadow:0 0 0 5px #9d5eff4a,0 0 18px #9d5eff}
+.mission-detail-page .journey-next{max-width:none;border:1px solid #49345f80;background:#ffffff03;border-radius:10px;padding:15px 18px;font-size:13px}
+.mission-detail-page .reward-terms{padding:8px 0 22px;border:0}
+.mission-detail-page .reward-terms>h3{font-size:16px;margin-bottom:18px}
+.mission-detail-page .reward-terms dl{grid-template-columns:repeat(3,minmax(0,1fr));gap:20px 24px}
+.mission-detail-page .reward-terms dl>div+div{border-left:1px solid #443053;padding-left:20px}
+.mission-detail-page .reward-terms .outage-caption{margin-top:14px}
+.mission-detail-page .reward-terms dt{font-weight:600;color:#ece0ff}
+.mission-detail-page .reward-terms dd{font-size:13px;color:#c5b6d8}
+.mission-detail-page .brief{margin:24px 0;max-width:none;width:100%}
+.mission-disclosure,.participants-panel{border:1px solid #49345e;border-radius:12px;background:linear-gradient(125deg,#1d142977,#100e19);margin:0 0 16px;padding:18px}
+.mission-disclosure summary{display:flex;align-items:center;gap:12px;cursor:pointer;list-style:none;font-size:15px;font-weight:600;min-height:26px}
+.mission-disclosure summary::-webkit-details-marker{display:none}
+.mission-disclosure summary>svg:first-child{color:#bb8afa;flex:none}
+.mission-disclosure summary>svg:last-child{margin-left:auto;color:#baa3d5;transition:transform .18s}
+.mission-disclosure[open] summary>svg:last-child{transform:rotate(180deg)}
+.mission-detail-page .mission-disclosure p{font-size:13px;color:#c5b6d8;line-height:1.7;margin:15px 0 0;overflow-wrap:anywhere;white-space:pre-wrap}
+.mission-detail-page .brief .mission-disclosure p{padding:12px 15px;border:1px solid #44334f75;background:#ffffff03;border-radius:9px}
+.mission-sidebar{display:flex;flex-direction:column;gap:18px;min-width:0}
+.mission-detail-page .reward-panel{position:relative;top:auto;display:block;width:auto;background:radial-gradient(ellipse at 95% 0,#61319238,transparent 65%),linear-gradient(135deg,#21162f,#100d1c);border:1px solid #654484;border-radius:13px;padding:26px;overflow:hidden}
+.mission-detail-page .reward-panel:before{content:'';position:absolute;pointer-events:none;width:92px;height:92px;border-radius:50%;right:-24px;top:-30px;background:radial-gradient(circle at 32% 32%,#ad7ced77,#4c247466 55%,#211131 78%);box-shadow:0 0 50px #8254ce20}
+.mission-detail-page .reward-caption{display:block;font-size:12px;color:#d9bafb;max-width:85%;line-height:1.5}
+.mission-detail-page .reward-amount{font-size:64px;letter-spacing:-2px;line-height:1.15;margin-top:14px;color:#c28cff}
+.mission-detail-page .reward-amount span{font-size:28px;letter-spacing:-.5px}
+.mission-detail-page .reward-panel>p{font-size:12px;margin:4px 0 20px;color:#b8a6cc}
+.mission-detail-page .reward-details{font-size:12px;border-color:#453254;gap:15px;padding:20px 0;margin:20px 0}
+.mission-detail-page .reward-details svg{width:20px;height:20px;flex:none;color:#bc8afa}
+.mission-detail-page .reward-panel>.button{min-height:48px;font-size:14px;margin-top:0}
+.mission-detail-page .reward-panel>small{display:block;line-height:1.65;font-size:11px;margin-top:12px;color:#ad9bc3}
+.mission-sidebar .mission-disclosure{margin:0}
+.mission-help .text-link{margin-top:14px;font-size:12px}
+.participants-panel{margin:0;padding:18px}
+.participants-panel h2{display:flex;align-items:center;gap:8px;font-size:15px;margin:0 0 16px}
+.participants-panel h2>svg{color:#bb8afa;flex:none}
+.participants-panel h2>span{margin-left:auto;padding:5px 9px;background:#30203f;border-radius:6px;font-size:12px}
+.participants-empty{text-align:center;border:1px solid #3b2d4d;border-radius:10px;padding:34px 16px}
+.participants-empty>svg{color:#9279b1}.participants-empty h3{font-size:16px;margin:14px 0 10px}.participants-empty p{font-size:12px;color:#bba9ce;line-height:1.6}
+.participants-panel ul{list-style:none;padding:0;margin:0;max-height:360px;overflow:auto}
+.participants-panel li{display:flex;align-items:center;gap:8px;border-top:1px solid #392a49;padding:12px 0;font-size:12px}
+.participants-panel li>a:first-child{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+.participants-panel strong{overflow-wrap:anywhere}.participants-panel .avatar{flex:none}
+.settlement-details summary{display:flex;justify-content:space-between;cursor:pointer;font-weight:600}
+#mission-payment-terms,[id^=contribution-]{scroll-margin-top:24px}
+@media(max-width:1100px){.mission-detail-page .detail-layout{grid-template-columns:minmax(0,1fr) 300px;gap:22px}.mission-detail-page .mission-intro{grid-template-columns:minmax(0,1fr) 170px}.mission-detail-page .reward-panel{padding:22px}}
+@media(max-width:760px){.mission-detail-page .detail-layout{grid-template-columns:minmax(0,1fr)}.mission-sidebar{grid-row:auto}.mission-detail-page .mission-intro{grid-template-columns:minmax(0,1fr) 140px;gap:16px;min-height:160px}.mission-detail-page .mission-intro h1{font-size:32px}.mission-detail-page .mission-journey{padding:20px 16px}.mission-detail-page .reward-terms dl{gap:18px}.mission-detail-page .reward-panel{display:block}.mission-detail-page .reward-details{border-top:1px solid #453254;padding-top:20px}.mission-detail-page .reward-panel>.button{margin-top:16px}.mission-detail-page .creator-link{font-size:11px;flex-wrap:wrap}.mission-detail-page .creator-link .avatar{width:34px;height:34px}}
+@media(max-width:480px){.stepped-form .wizard-steps li{flex-direction:column;align-items:flex-start;gap:8px;font-size:10px}.stepped-form .wizard-steps span{width:28px;height:28px}.stepped-form .wizard-panel h2{font-size:25px}.mission-detail-page .mission-intro{grid-template-columns:minmax(0,1fr)}.mission-detail-page .mission-banner{max-height:175px;object-fit:cover}.mission-detail-page .reward-terms dl{grid-template-columns:1fr}.mission-detail-page .journey-track li{font-size:10px}}
+@media(prefers-reduced-motion:reduce){.mission-disclosure summary>svg:last-child{transition:none}}
+@media(max-width:760px){.mission-detail-page .reward-terms dl{grid-template-columns:1fr}.mission-detail-page .reward-terms dl>div+div{border-left:0;border-top:1px solid #443053;padding:16px 0 0}}
+@media(max-width:760px){
+ .mission-detail-page .mission-detail,.mission-detail-page .mission-sidebar{display:contents}
+ .mission-detail-page .mission-detail>*{order:7;min-width:0}
+ .mission-detail-page .mission-intro{order:0;margin-bottom:0}
+ .mission-detail-page .reward-panel{order:1}
+ .mission-detail-page .mission-journey{order:2;margin:0}
+ .mission-detail-page .reward-terms{order:3;margin:0}
+ .mission-detail-page .brief{order:4;margin:0}
+ .mission-detail-page .mission-help{order:5}
+ .mission-detail-page .participants-panel{order:6}
+}

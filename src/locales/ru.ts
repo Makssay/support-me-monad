@@ -996,4 +996,8 @@ export const ru: Record<string, string> = {
   "Mission publication could not be verified. Retry shortly.": "Не удалось проверить время создания задания. Повтори попытку чуть позже.",
   "Wallet confirmation is taking longer than expected. If its window disappeared, check My missions before refreshing. Do not submit the payment again blindly.": "Подтверждение кошелька затянулось. Если окно исчезло, проверь «Мои задания» перед обновлением страницы. Не отправляй оплату повторно вслепую.",
   "A previous wallet request is unresolved. Check My missions and your wallet activity before refreshing; do not pay again blindly.": "Предыдущий запрос кошелька ещё не завершён. Проверь «Мои задания» и историю кошелька перед обновлением страницы; не оплачивай повторно вслепую.",
+  "Before you participate": "Перед участием",
+  "No participants yet": "Пока нет участников",
+  "Be the first to contribute.": "Будь первым — отправь свою работу.",
+  "View contribution": "Посмотреть работу",
 };
