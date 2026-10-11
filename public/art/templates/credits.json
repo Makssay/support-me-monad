@@ -14,5 +14,6 @@
   ],
   "latestEditsCostUsd": 0.0678275,
   "nftExplorationCostUsd": 0.172543,
-  "tokenExplorationCostUsd": 0.10492475
+  "tokenExplorationCostUsd": 0.10492475,
+  "tokenRemovalCostUsd": 0.03391325
 }
