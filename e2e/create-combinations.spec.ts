@@ -37,7 +37,7 @@ test('Every category/payment combination preserves category-specific evidence an
    await page.locator(`[data-payment-mode="${mode}"]`).click();
    const post=page.getByLabel('Contest post URL');
    if(category==='Replies'){await expect(post).toBeVisible();await post.fill(target);}else await expect(post).toHaveCount(0);
-   await next(page);await page.getByLabel('Reward slots',{exact:true}).fill('7');await page.getByLabel('Quick test · every stage is 5 minutes',{exact:false}).check();await next(page);
+   await next(page);await page.getByLabel('Reward slots',{exact:true}).fill('7');await page.getByLabel('Quick test · every stage is 10 minutes',{exact:false}).check();await next(page);
    const x=page.getByLabel('Require a public X / Twitter post link');
    if(mode===6)await expect(x).toHaveCount(0);
    else if(category==='Replies'||category==='Social content'&&mode===5){await expect(x).toBeChecked();await expect(x).toBeDisabled();}
