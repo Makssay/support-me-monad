@@ -1,6 +1,7 @@
 import { setWalletOperationPending } from './deployment-recovery';
 import { refreshAfterReceipt } from './refresh-after-receipt';
 import { coalesceLoad } from './coalesce-load';
+import { snapshotLoadError } from './snapshot-status';
 import { erc20Abi, type RewardAsset } from '../shared/rewards';
 import { tokenTransferAbi, TokenTransferError, validateTokenTransfer } from './token-transfer';
 import { createContext, useContext, useEffect, useState, useRef, type ReactNode } from 'react';
@@ -26,16 +27,16 @@ export function AppProvider({ children, auth }: { children: ReactNode; auth?: Au
  const currentAuth = useRef(auth); currentAuth.current = auth;
  const authWalletKey = auth?.wallets.map(w => w.address.toLowerCase()).join(',');
  const loadRead = useRef<(() => Promise<void>) | undefined>(undefined);
- const hasSnapshot = useRef(false);
+ const lastSnapshot = useRef<Snapshot | undefined>(undefined);
  if (!loadRead.current) loadRead.current = coalesceLoad(async () => {
   try {
    const r = await fetch('/api/state', {signal:AbortSignal.timeout(25000)});
    const data: Snapshot & {error?:string} = await r.json();
    if (!r.ok || !data.config || !Array.isArray(data.missions)) throw new Error(data.error);
-   setState(previous => previous && Date.parse(previous.updatedAt)>Date.parse(data.updatedAt) ? previous : data);
-   hasSnapshot.current=true;setConfig(data.config);
-   setError(data.stale ? 'Data is updating. Showing the last saved state; please check again shortly.' : '');
-  } catch { setError(hasSnapshot.current ? 'Data is updating. Showing the last saved state; please check again shortly.' : 'We could not load Monad right now. Retry in a moment.'); }
+   if (!lastSnapshot.current || Date.parse(lastSnapshot.current.updatedAt)<=Date.parse(data.updatedAt)) lastSnapshot.current=data;
+   setState(lastSnapshot.current);setConfig(lastSnapshot.current.config);
+   setError(snapshotLoadError(lastSnapshot.current));
+  } catch { setError(snapshotLoadError(lastSnapshot.current, true)); }
   finally { setLoading(false); }
  });
  function load() { return loadRead.current!(); }
