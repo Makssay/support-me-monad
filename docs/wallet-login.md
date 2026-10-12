@@ -2,7 +2,7 @@
 
 The stable Privy release is preserved at Git tag `checkpoint/privy-stable-2026-10-13` (commit `4a60d8b`) and in `.data/privy-stable-2026-10-13.bundle`. The tag is pushed to GitHub. Work on the fallback is isolated on `codex/wallet-x-fallback`.
 
-Preview (Vercel authentication required): https://support-me-wallet-preview.support-me.workers.dev/ forwards to the immutable deployment https://support-me-monad-br79dvbii-makssays-projects.vercel.app/. The production proxy is unchanged. The preview uses existing D1 persistence and paid social lookup limits; it disables background automation and does not receive the automation private key. A real X link on the preview persists the binding, so use the intended external wallet rather than a disposable address for a real user's account.
+Preview (temporary deployment-scoped access, valid for 24 hours from deployment): https://support-me-wallet-preview.support-me.workers.dev/ forwards to the immutable deployment https://support-me-monad-mx7ne6k93-makssays-projects.vercel.app/. The production proxy is unchanged. The preview uses existing D1 persistence and paid social lookup limits; it disables background automation and does not receive the automation private key. A real X link on the preview persists the binding, so use the intended external wallet rather than a disposable address for a real user's account.
 
 ## Activation
 
@@ -30,6 +30,8 @@ Existing Privy identity and the external identity may share the same stable X ID
 `npm test` covers nonce replay, incorrect signer/domain, expiry, wrong/nested reply, code matching, immutable bindings, token hashing, logout and persistence.
 
 `npm run test:e2e -- e2e/external-auth.spec.ts e2e/wallet-stability.spec.ts` covers the fallback UI on desktop/mobile, rejection then retry, refresh recovery, account changes and normal Privy wallet stability. It executes a real ERC-20 transfer on isolated Anvil and checks token delivery and gas charged to the external sender. X evidence is mocked in this suite; it does not establish real SocialData end-to-end success.
+
+Real hosted check on 2026-10-13: Rabby wallet `0x2937416b9e66E0Af149f9864d70B5500f1844489` signed the nonce; @RialoFun published https://x.com/RialoFun/status/2109789897485590591 under the configured post. Real SocialData verification accepted the reply and issued the wallet session. Refresh restored the same account without another reply. Remote smoke checks rejected a reused signature and a forged session. Live network switching remains pending: Rabby was on another network and the switch request returned an error, so no hosted transaction or Monad balance is claimed by this login check. Local Anvil transfer verification is described above. Production remains on the stable Privy release.
 
 ## Rollback
 
