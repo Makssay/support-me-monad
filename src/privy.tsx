@@ -1,17 +1,21 @@
 import { t, useLocale } from './i18n';
 import { useMemo, useEffect, useState, useRef, useCallback, memo, type FormEvent } from 'react';
 import BackupSignInDialog from './backup-signin-dialog';
-import { PrivyProvider, usePrivy, useWallets, useSendTransaction, useLoginWithEmail, useCreateWallet, useUnlinkWallet } from '@privy-io/react-auth';
+import { PrivyProvider, usePrivy, useWallets, useSendTransaction, useLoginWithEmail, useCreateWallet, useUnlinkWallet, useModalStatus } from '@privy-io/react-auth';
 import { defineChain } from 'viem';
 import { CHAIN_ID, EXPLORER, PUBLIC_RPC } from '../shared/model';
 import { type AuthSession, type AuthWallet } from './state';
 import { embeddedAddress, legacyWalletsToUnlink } from './support-wallet-policy';
 import { WalletRequest } from './wallet-request';
 import { accountSession } from './account-session';
+import { waitForWalletModal } from './wallet-modal';
 const monad = defineChain({ id: CHAIN_ID, name: 'Monad Testnet', nativeCurrency: { name: 'MON', symbol: 'MON', decimals: 18 }, rpcUrls: { default: { http: [PUBLIC_RPC] } }, blockExplorers: { default: { name: 'Monadscan', url: EXPLORER } }, testnet: true });
 function WalletBridge({ onSession }: { onSession: (auth: AuthSession) => void }) { useLocale(); 
  const { ready, authenticated, user, login, logout, linkTwitter, linkEmail, getAccessToken } = usePrivy();
  const { wallets, ready: walletsReady } = useWallets();
+ const { isOpen } = useModalStatus();
+ const modal = useRef({open:isOpen,closedAt:0});
+ if (modal.current.open !== isOpen) modal.current = {open:isOpen,closedAt:isOpen ? 0 : Date.now()};
  const walletRequest = useRef(new WalletRequest());
  const { sendTransaction } = useSendTransaction({
   onSuccess: ({hash}) => walletRequest.current.success(hash),
@@ -84,7 +88,10 @@ function WalletBridge({ onSession }: { onSession: (auth: AuthSession) => void })
  const allowedWallets = useMemo<AuthWallet[]>(() => member ? wallets.filter(w => w.walletClientType === 'privy' && w.address.toLowerCase() === supportAddress?.toLowerCase()).map(w => ({ address: w.address, label: 'Support Me wallet', getProvider: () => w.getEthereumProvider(), switchChain: (id: number) => w.switchChain(id),
   sendSponsored: w.walletClientType === 'privy' ? async (transaction: { to: string; data: string; value: bigint; chainId: number }) => {
    if (transaction.chainId !== CHAIN_ID) throw new Error('Only Monad Testnet sponsorship is supported.');
-   return walletRequest.current.run(() => sendTransaction(transaction, { address: w.address, sponsor: true, uiOptions: {showWalletUIs:true,isCancellable:true} }));
+   return walletRequest.current.run(async () => {
+    await waitForWalletModal(() => modal.current);
+    return sendTransaction(transaction, { address: w.address, sponsor: true, uiOptions: {showWalletUIs:true,isCancellable:true} });
+   });
   } : undefined
  })) : [], [!!member, wallets, supportAddress, sendTransaction]);
  const auth = useMemo<AuthSession>(() => ({ ready: ready && walletsReady, authenticated, login: loginX, loginBackup, logout, connectWallet: retry, creatingWallet, linkX: linkTwitter, linkEmail, retry, getAccessToken, member, needsX, accountError: error, cleanupError, wallets: allowedWallets }), [ready, walletsReady, authenticated, loginX, loginBackup, logout, creatingWallet, linkTwitter, linkEmail, retry, getAccessToken, member, needsX, error, cleanupError, allowedWallets]);
