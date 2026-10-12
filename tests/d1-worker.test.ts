@@ -17,6 +17,14 @@ test('D1 gateway fences writers, persists across cold starts and fails closed wi
   assert.equal((await call('/storage/acquire',{owner:randomUUID()},'wrong')).status,401);
   const first=randomUUID(),second=randomUUID();assert.equal((await call('/storage/acquire',{owner:first})).status,200);
   assert.equal((await call('/storage/acquire',{owner:second})).status,409);
+  const publicRecord=JSON.stringify(['.data/public-snapshot.json','value','updatedAt']);
+  assert.equal((await call('/storage/commit',{owner:first,changes:[{key:publicRecord,value:'"qa-snapshot"'}]})).status,200);
+  const readOnly=await call('/storage/public-snapshot',{});
+  assert.equal(readOnly.status,200);
+  const view=await readOnly.json() as {rows:{key:string;value:string}[];busy:boolean};
+  assert.equal(view.busy,true);assert.deepEqual(view.rows,[{key:publicRecord,value:'"qa-snapshot"'}]);
+  assert.equal((await call('/storage/public-snapshot',{},'wrong')).status,401);
+  assert.equal((await call('/storage/acquire',{owner:second})).status,409,'read-only snapshot does not release or acquire the writer lease');
   const record=JSON.stringify(['.data/qa-cloud.json','nested','saved']);
   assert.equal((await call('/storage/commit',{owner:first,changes:[{key:record,value:'7'}]})).status,200);
   await db.prepare('UPDATE app_lease SET expires=0 WHERE id=1').run();

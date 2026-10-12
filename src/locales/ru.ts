@@ -1,5 +1,6 @@
 // Interface copy only. Creator-authored text and signing payloads are unchanged.
 export const ru: Record<string, string> = {
+ "Data is updating. Showing the last saved state; please check again shortly.": "Данные обновляются. Показываем последнюю сохранённую версию; проверь чуть позже.",
  "Your tokens": "Твои токены",
  "Refresh token balances": "Обновить балансы токенов",
  "Loading token balances…": "Загружаем балансы токенов…",

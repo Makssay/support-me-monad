@@ -16,6 +16,13 @@ export default {
   if (Number(request.headers.get('Content-Length')) > 3500000) return json({error:'Payload too large'},413);
   try {
    const body = await request.json() as any; const now = Date.now();
+   // Display-only snapshot reads must not contend with payment/auth writers.
+   // The scope is fixed here: callers cannot read arbitrary private records.
+   if (path === '/storage/public-snapshot') {
+    const rows=(await env.DB.prepare("SELECT key,value FROM app_records WHERE json_extract(key,'$[0]')='.data/public-snapshot.json'").all<{key:string;value:string}>()).results;
+    const held=await env.DB.prepare('SELECT expires FROM app_lease WHERE id=1').first<{expires:number}>();
+    return json({rows,busy:!!held&&held.expires>now});
+   }
    if (typeof body.owner !== 'string' || !/^[\da-f-]{36}$/i.test(body.owner)) return json({error:'Invalid lease'},400);
    if (path === '/storage/acquire') {
     const expires = now + 300000;

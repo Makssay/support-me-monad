@@ -82,6 +82,10 @@ export function checkpoint() {
  if(!cloudStorage)return Promise.resolve();
  const next=commitTail.then(commitCheckpoint);commitTail=next.catch(()=>{});return next;
 }
+export async function readPublicSnapshot() {
+ const result = await rpc('/storage/public-snapshot', {});
+ return { data:decodeStores(result.rows).get('.data/public-snapshot.json'), busy:result.busy===true };
+}
 export async function durableOperation<T>(operation: () => Promise<T>): Promise<T> {
  if (!cloudStorage) return operation();
  const before = localTail; let release!: () => void; localTail = new Promise<void>(r => { release = r; });

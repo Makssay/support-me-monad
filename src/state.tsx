@@ -1,5 +1,6 @@
 import { setWalletOperationPending } from './deployment-recovery';
 import { refreshAfterReceipt } from './refresh-after-receipt';
+import { coalesceLoad } from './coalesce-load';
 import { erc20Abi, type RewardAsset } from '../shared/rewards';
 import { tokenTransferAbi, TokenTransferError, validateTokenTransfer } from './token-transfer';
 import { createContext, useContext, useEffect, useState, useRef, type ReactNode } from 'react';
@@ -24,7 +25,20 @@ export function AppProvider({ children, auth }: { children: ReactNode; auth?: Au
  const [preferred, setPreferred] = useState(() => localStorage.getItem('support.privy-wallet') || '');
  const currentAuth = useRef(auth); currentAuth.current = auth;
  const authWalletKey = auth?.wallets.map(w => w.address.toLowerCase()).join(',');
- async function load() { try { const r = await fetch('/api/state'); const data = await r.json(); if (!r.ok) throw new Error(data.error); setState(data); setConfig(data.config); setError(''); } catch { setError('We could not load Monad right now. Retry in a moment.'); } finally { setLoading(false); } }
+ const loadRead = useRef<(() => Promise<void>) | undefined>(undefined);
+ const hasSnapshot = useRef(false);
+ if (!loadRead.current) loadRead.current = coalesceLoad(async () => {
+  try {
+   const r = await fetch('/api/state', {signal:AbortSignal.timeout(25000)});
+   const data: Snapshot & {error?:string} = await r.json();
+   if (!r.ok || !data.config || !Array.isArray(data.missions)) throw new Error(data.error);
+   setState(previous => previous && Date.parse(previous.updatedAt)>Date.parse(data.updatedAt) ? previous : data);
+   hasSnapshot.current=true;setConfig(data.config);
+   setError(data.stale ? 'Data is updating. Showing the last saved state; please check again shortly.' : '');
+  } catch { setError(hasSnapshot.current ? 'Data is updating. Showing the last saved state; please check again shortly.' : 'We could not load Monad right now. Retry in a moment.'); }
+  finally { setLoading(false); }
+ });
+ function load() { return loadRead.current!(); }
  async function walletBalance(a = connected.current) { const wallet = selected.current; if (!a || !wallet) return; try { const p = new BrowserProvider(wallet); const [net, amount] = await Promise.all([p.getNetwork(), p.getBalance(a)]); if (selected.current !== wallet || connected.current !== a) return; setWrongChain(Number(net.chainId) !== config?.chainId); setBalance(formatEther(amount)); } catch { if (selected.current === wallet && connected.current === a) setBalance(''); } }
  async function refresh() {
    // Cache invalidation is best-effort. A failed hint must not undo a confirmed receipt.
