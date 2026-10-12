@@ -1,3 +1,4 @@
+import { installDeploymentRecovery } from './deployment-recovery';
 import { t, useLocale } from './i18n';
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -24,6 +25,7 @@ import './i18n.css';
 import './product.css';
 import './mission-layout.css';
 import type { AppConfig } from '../shared/model';
+installDeploymentRecovery();
 function Bootstrap() { useLocale(); 
  const [config, setConfig] = useState<AppConfig>(); const [failed, setFailed] = useState(false);
  useEffect(() => { const controller = new AbortController(); let cancelled = false; const timer = setTimeout(() => controller.abort(), 15000); void fetch('/api/config', { signal: controller.signal }).then(async r => { if (!r.ok) throw new Error(); const data = await r.json(); if (!cancelled) setConfig(data); }).catch(() => { if (!cancelled) setFailed(true); }).finally(() => clearTimeout(timer)); return () => { cancelled = true; controller.abort(); clearTimeout(timer); }; }, []);

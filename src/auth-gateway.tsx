@@ -1,3 +1,4 @@
+import { recoverMissingChunk } from './deployment-recovery';
 import { t, useLocale } from './i18n';
 import { Component, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AppProvider, type AuthSession } from './state';
@@ -13,7 +14,7 @@ const hasOAuthReturn = () => {
 class AuthBoundary extends Component<{ children: ReactNode; onFailure: () => void }, { failed: boolean }> {
  state = { failed: false };
  static getDerivedStateFromError() { return { failed: true }; }
- componentDidCatch() { this.props.onFailure(); }
+ componentDidCatch(error: unknown) { recoverMissingChunk(error); this.props.onFailure(); }
  render() { return this.state.failed ? <div className="auth-progress" role="alert"><p>{t("Sign in could not load. Please retry.")}</p><button className="button primary" onClick={() => location.reload()}>{t("Retry")}</button></div> : this.props.children; }
 }
 // Keep the public product mounted while authentication loads separately.

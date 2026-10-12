@@ -1,3 +1,4 @@
+import { registerRecoveryDraft } from './deployment-recovery';
 import {missionTemplates, type MissionTemplate} from './mission-templates';
 import './mission-templates.css';
 import {PaymentFormat} from './payment-format';
@@ -17,14 +18,19 @@ import abi from '../shared/abi.json';
 import { AI_MODEL, AI_VERSION, DEFAULT_RUBRIC, MAX_AI_CRITERIA, parseRubric } from '../shared/ai';
 import { StepTransition, TransitionLink } from './view-transitions';
 
+const RECOVERY_DRAFT = 'support.create-recovery';
+function readRecoveryDraft(): Record<string, any> {
+ try { const saved = JSON.parse(sessionStorage.getItem(RECOVERY_DRAFT) || 'null'); return saved && Date.now() - saved.savedAt < 300000 ? saved.draft : {}; } catch { return {}; }
+}
 const steps = ['Mission title', 'Reward', 'Details', 'Review'];
 const num = (value: string | number) => localizedNumber(value);
 
 export default function CreateMission() { useLocale(); 
  const { address, transact, busy, setWalletOpen, auth, config, sign, apiFetch, gasSponsored, state } = useApp();
  const navigate = useNavigate();
- const [step, setStep] = useState(0);
- const [template,setTemplate]=useState<MissionTemplate>();
+ const [restored] = useState(readRecoveryDraft);
+ const [step, setStep] = useState(restored.step ?? 0);
+ const [template,setTemplate]=useState<MissionTemplate | undefined>(() => missionTemplates.find(item => item.id === restored.templateId));
  function applyTemplate(next:MissionTemplate) {
   setTemplate(next);setStep(0);setError('');setCategory(next.category);setMode(next.mode);
   setTitle(t(next.title));setDescription(t(next.brief));setRequirements(t(next.requirements));
@@ -35,33 +41,38 @@ export default function CreateMission() { useLocale();
  const [stepDirection,setStepDirection]=useState(1);
  const publishing = useRef(false);
  const [preparingPublication,setPreparingPublication] = useState(false);
- const [community,setCommunity]=useState<CommunityDraft>(emptyCommunity);
+ const [community,setCommunity]=useState<CommunityDraft>(restored.community ?? emptyCommunity);
  let admissionPolicy:ReturnType<typeof draftPolicy>;let admissionError='';try{admissionPolicy=draftPolicy(community);}catch(e){admissionError=(e as Error).message;}
- const [title, setTitle] = useState('');
- const [description, setDescription] = useState('');
- const [requirements, setRequirements] = useState('');
- const [category, setCategory] = useState('Memes');
+ const [title, setTitle] = useState(restored.title ?? '');
+ const [description, setDescription] = useState(restored.description ?? '');
+ const [requirements, setRequirements] = useState(restored.requirements ?? '');
+ const [category, setCategory] = useState(restored.category ?? 'Memes');
  const profile = state?.profiles.find(p => sameAddress(p.address, address));
  const username = auth?.member?.username || profile?.username;
  const name = username ? '@' + username.replace(/^@/, '') : shortAddress(address);
  const modeOptions = category === 'Bug hunting' ? [3] : [defaultMode(category), 0, ...(config?.aiController ? [5] : []), ...(category === 'Replies' ? [4] : (config?.version || 0) >= 6 ? [6] : [])].filter((v,i,a) => a.indexOf(v) === i);
  function chooseMode(next: number) { setError(''); tokenRequest.current++; setCheckingToken(false); setMode(next); if (next === 6 || next === 3) setAIReview(false); if ([4,5,6].includes(next) && Number(slots)>20) setSlots('20'); if (![4,5,6].includes(next) && Number(days) < 1) setDays('7'); }
  function chooseCategory(next: string) { setCategory(next); chooseMode(defaultMode(next)); }
- const [mode,setMode]=useState(0); const [targetPost,setTargetPost]=useState(''); const [reviewDays,setReviewDays]=useState('3'); const [workHours,setWorkHours]=useState('24');
- const [asset,setAsset]=useState<RewardAsset>(nativeReward);
- const [tokenInput,setTokenInput]=useState('');const [tokenBalance,setTokenBalance]=useState('');const [checkingToken,setCheckingToken]=useState(false);const [tokenError,setTokenError]=useState('');
+ const [mode,setMode]=useState(restored.mode ?? 0); const [targetPost,setTargetPost]=useState(restored.targetPost ?? ''); const [reviewDays,setReviewDays]=useState(restored.reviewDays ?? '3'); const [workHours,setWorkHours]=useState(restored.workHours ?? '24');
+ const [asset,setAsset]=useState<RewardAsset>(restored.asset ?? nativeReward);
+ const [tokenInput,setTokenInput]=useState(restored.tokenInput ?? '');const [tokenBalance,setTokenBalance]=useState('');const [checkingToken,setCheckingToken]=useState(false);const [tokenError,setTokenError]=useState('');
  const tokenRequest=useRef(0);
  async function checkToken(){const request=++tokenRequest.current;setCheckingToken(true);setTokenError('');try{const r=await fetch(`/api/reward-tokens/lookup?token=${encodeURIComponent(tokenInput)}&wallet=${address}&ai=${mode===5?'1':'0'}`);const data=await r.json();if(request!==tokenRequest.current)return;if(!r.ok)throw new Error(data.error);setAsset(data.asset);setTokenBalance(data.balance||'0');setReward('1');}catch(e){if(request===tokenRequest.current)setTokenError(e instanceof Error?e.message:'Token lookup failed.');}finally{if(request===tokenRequest.current)setCheckingToken(false);}}
  const tokenMode=asset.source!=='native';
- const [reward, setReward] = useState('0.01');
- const [slots, setSlots] = useState('3');
- const [days, setDays] = useState('7');
- const [social, setSocial] = useState(false);
+ const [reward, setReward] = useState(restored.reward ?? '0.01');
+ const [slots, setSlots] = useState(restored.slots ?? '3');
+ const [days, setDays] = useState(restored.days ?? '7');
+ const [social, setSocial] = useState(restored.social ?? false);
  const [aiReview,setAIReview]=useState(false);const [criteria,setCriteria]=useState(parseRubric(DEFAULT_RUBRIC));
- const [quick,setQuick]=useState(false);const [pythQuote,setPythQuote]=useState<string>();
+ const [quick,setQuick]=useState(restored.quick ?? false);const [pythQuote,setPythQuote]=useState<string>();
  const protectedMode=(config?.version||0)>=3&&[0,1,2,4,6].includes(mode);
  useEffect(()=>{let alive=true;if(protectedMode&&[0,4,6].includes(mode)){setPythQuote(undefined);void fetch('/api/draw-fee').then(r=>r.ok?r.json():Promise.reject()).then(q=>{if(alive)setPythQuote(q.wei);}).catch(()=>{});}else setPythQuote('0');return()=>{alive=false;};},[mode,protectedMode]);
  const [error, setError] = useState('');
+ useEffect(() => { sessionStorage.removeItem(RECOVERY_DRAFT); }, []);
+ useEffect(() => registerRecoveryDraft(() => {
+  if (publishing.current || preparingPublication || busy) throw new Error('Publication unresolved');
+  sessionStorage.setItem(RECOVERY_DRAFT, JSON.stringify({savedAt: Date.now(), draft: {step, templateId:template?.id, community, title, description, requirements, category, mode, targetPost, reviewDays, workHours, asset, tokenInput, reward, slots, days, social, quick}}));
+ }), [step, template, community, title, description, requirements, category, mode, targetPost, reviewDays, workHours, asset, tokenInput, reward, slots, days, social, quick, preparingPublication, busy]);
  // New missions use fixed templates; existing AI missions are handled elsewhere.
  const needsAI = false;
  const forcedX=category==='Replies'||mode===4||(needsAI&&requiresXEvidence({category,socialRequired:false}));

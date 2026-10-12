@@ -1,3 +1,4 @@
+import { setWalletOperationPending } from './deployment-recovery';
 import { erc20Abi } from '../shared/rewards';
 import { createContext, useContext, useEffect, useState, useRef, type ReactNode } from 'react';
 import { BrowserProvider, formatEther, type Eip1193Provider, type TransactionReceipt } from 'ethers';
@@ -91,10 +92,10 @@ export function AppProvider({ children, auth }: { children: ReactNode; auth?: Au
    if (!connected.current || !selected.current) { setWalletOpen(true); return; }
    if (!config?.contractAddress) { setNotice({ kind: 'error', text: 'Missions are not available until the contract is deployed.' }); return; }
    if (pending.current) return;
-   pending.current = true; setBusy(true);
+   pending.current = true; setBusy(true); setWalletOperationPending(true);
    const wallet = selected.current; const account = connected.current;
    let sentHash = '';
-   const confirmationTimer=setTimeout(()=>{if(!sentHash)setNotice({kind:'pending',text:'Wallet confirmation is taking longer than expected. If its window disappeared, check My missions before refreshing. Do not submit the payment again blindly.'});},45000);
+   // Privy can wait for All Done after mining. Elapsed time alone is not a failure signal.
    const authWallet = currentAuth.current?.wallets.find(w => w.address.toLowerCase() === account.toLowerCase());
    const sponsored = !!((currentAuth.current?.provider === 'dynamic' ? config.dynamicGasSponsorship : config.gasSponsorship) && authWallet?.sendSponsored);
    try {
@@ -118,7 +119,7 @@ export function AppProvider({ children, auth }: { children: ReactNode; auth?: Au
        }),
        getSigner: () => provider.getSigner(account),
        waitForReceipt: hash => provider.waitForTransaction(hash, 1, 90000),
-       onSent: hash => { clearTimeout(confirmationTimer); sentHash = hash; setNotice({ kind: 'pending', text: `${label} is confirming on Monad.`, tx: hash }); }
+       onSent: hash => { sentHash = hash; setNotice({ kind: 'pending', text: `${label} is confirming on Monad.`, tx: hash }); }
      });
      setNotice({ kind: 'success', text: `${label} confirmed.${sponsored ? ' Gas covered by Support Me.' : ''}`, tx: receipt.hash }); await refresh(); return receipt;
    } catch (e: any) {
@@ -130,7 +131,7 @@ export function AppProvider({ children, auth }: { children: ReactNode; auth?: Au
        : e.code === 'INSUFFICIENT_FUNDS' ? 'You need more testnet MON for this action and gas. Get some from the faucet.'
        : 'Transaction could not be completed. Check your balance, account, and the latest mission status, then retry.';
      setNotice({ kind: 'error', text, tx: sentHash || undefined });
-   } finally { clearTimeout(confirmationTimer); pending.current = false; setBusy(false); }
+   } finally { pending.current = false; setBusy(false); setWalletOperationPending(false); }
  }
  return <AppContext.Provider value={{ state, config, loading, error, address, balance, wrongChain, walletOpen, setWalletOpen, connect, disconnect, refresh, transact, sign, apiFetch, notice, clearNotice: () => setNotice(undefined), busy, gasSponsored, auth, chooseWallet, lockPayoutWallet }}>{children}</AppContext.Provider>;
 }
