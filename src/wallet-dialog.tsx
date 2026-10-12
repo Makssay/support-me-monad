@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowUpRight, Check, ChevronRight, Copy, ExternalLink, FlaskConical, Gift, LockKeyhole, LogOut, ShieldCheck, Signal, Target, Wallet, X } from 'lucide-react';
 import { AccountBackup, AccountSignIn } from './account-controls';
+import { WalletTokens } from './wallet-tokens';
 import { useApp } from './state';
 import { t, useLocale, number as localizedNumber } from './i18n';
 import { profilePath, sameAddress, shortAddress } from '../shared/model';
@@ -52,6 +53,7 @@ export default function WalletDialog() {
     <span className="sr-only" role="status">{copied ? t('Address copied') : copyError ? t('Could not copy. Select your address below.') : ''}</span>{copyError && <p className="account-copy-fallback">{address}</p>}
     <div className="account-balance-panel"><span className="monad-balance-symbol"><img src="/art/monad-coin.webp" width="96" height="96" alt=""/></span><div><p>{t('Wallet balance')}</p><div className="account-balance-value" title={balance ? `${balance} MON` : undefined}>{displayBalance}<span>{t(config?.chainId === 143 ? 'MON' : 'testnet MON')}</span></div></div><svg className="balance-decoration" viewBox="0 0 180 110" aria-hidden="true"><path d="M0 110Q25 40 48 69T90 52T128 30T180 45V110Z" fill="currentColor"/></svg></div>
     <div className="account-metrics" aria-label={t('Your activity')}><div><Signal/><span>{t('Signal Score')}<strong>{localizedNumber(profile?.score ?? 0)}</strong></span></div><div><Gift/><span>{t('Rewards received')}<strong>{localizedNumber(profile?.accepted ?? 0)}</strong></span></div><div><Target/><span>{t('Missions created')}<strong>{localizedNumber(state?.missions.filter(m => sameAddress(m.creator,address)).length ?? 0)}</strong></span></div></div>
+    <WalletTokens/>
     {auth && <AccountBackup/>}{gasSponsored && <p className="account-gas-note"><ShieldCheck size={15}/>{t('Support Me covers gas on Monad Testnet. Mission rewards are funded separately.')}</p>}
     {wrongChain && <button className="button primary wide" disabled={busy} onClick={() => void connect()}>{t('Switch to Monad Testnet')}</button>}
    </> : <>

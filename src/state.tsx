@@ -1,8 +1,9 @@
 import { setWalletOperationPending } from './deployment-recovery';
 import { refreshAfterReceipt } from './refresh-after-receipt';
-import { erc20Abi } from '../shared/rewards';
+import { erc20Abi, type RewardAsset } from '../shared/rewards';
+import { tokenTransferAbi, TokenTransferError, validateTokenTransfer } from './token-transfer';
 import { createContext, useContext, useEffect, useState, useRef, type ReactNode } from 'react';
-import { BrowserProvider, formatEther, type Eip1193Provider, type TransactionReceipt } from 'ethers';
+import { BrowserProvider, Contract, formatEther, type Eip1193Provider, type TransactionReceipt } from 'ethers';
 import { prepareMissionTransaction, TransactionPreflightError } from './transaction-preflight';
 import { sendMissionTransaction } from './mission-transaction';
 import aiAbi from '../shared/ai-abi.json';
@@ -13,7 +14,7 @@ declare global { interface Window { ethereum?: Wallet; } }
 export interface AuthWallet { address: string; label: string; getProvider: () => Promise<Eip1193Provider>; switchChain: (id: number) => Promise<void>; sendSponsored?: (transaction: { to: string; data: string; value: bigint; chainId: number }) => Promise<string>; }
 export interface AuthSession { provider?: 'privy' | 'dynamic'; loginLegacy?: () => void; ready: boolean; authenticated: boolean; wallets: AuthWallet[]; login: () => void; logout: () => Promise<void>; connectWallet: () => void; creatingWallet?: boolean; loginBackup?: () => void; linkX?: () => void; linkEmail?: () => void; retry?: () => void; getAccessToken?: () => Promise<string | null>; member?: { xId: string; username: string; backupEmail: boolean }; accountError?: string; cleanupError?: string; needsX?: boolean; }
 interface Notice { kind: 'success' | 'error' | 'pending'; text: string; tx?: string; values?: Record<string, string>; }
-interface Context { state?: Snapshot; config?: AppConfig; loading: boolean; error: string; address: string; balance: string; wrongChain: boolean; walletOpen: boolean; setWalletOpen: (open: boolean) => void; connect: (wallet?: Wallet) => Promise<void>; disconnect: () => void; refresh: () => Promise<void>; transact: (label: string, method: string, args: unknown[], value?: bigint) => Promise<TransactionReceipt | undefined>; sign: (message: string) => Promise<string>; apiFetch: (url: string, init?: RequestInit) => Promise<Response>; notice?: Notice; clearNotice: () => void; busy: boolean; gasSponsored: boolean; auth?: AuthSession; chooseWallet: (address: string) => Promise<void>; lockPayoutWallet: () => () => void; }
+interface Context { tokenBalance: (asset: RewardAsset) => Promise<bigint>; sendToken: (asset: RewardAsset, recipient: string, amount: string, sender: string) => Promise<TransactionReceipt | undefined>; state?: Snapshot; config?: AppConfig; loading: boolean; error: string; address: string; balance: string; wrongChain: boolean; walletOpen: boolean; setWalletOpen: (open: boolean) => void; connect: (wallet?: Wallet) => Promise<void>; disconnect: () => void; refresh: () => Promise<void>; transact: (label: string, method: string, args: unknown[], value?: bigint) => Promise<TransactionReceipt | undefined>; sign: (message: string) => Promise<string>; apiFetch: (url: string, init?: RequestInit) => Promise<Response>; notice?: Notice; clearNotice: () => void; busy: boolean; gasSponsored: boolean; auth?: AuthSession; chooseWallet: (address: string) => Promise<void>; lockPayoutWallet: () => () => void; }
 const AppContext = createContext<Context>(null!);
 export function useApp() { return useContext(AppContext); }
 export function AppProvider({ children, auth }: { children: ReactNode; auth?: AuthSession }) {
@@ -89,6 +90,21 @@ export function AppProvider({ children, auth }: { children: ReactNode; auth?: Au
    return fetch(url, { ...init, headers, redirect: 'error' });
  }
  const gasSponsored = !!((auth?.provider === 'dynamic' ? config?.dynamicGasSponsorship : config?.gasSponsorship) && auth?.wallets.find(w => w.address.toLowerCase() === address.toLowerCase())?.sendSponsored);
+ async function tokenBalance(asset: RewardAsset) {
+   const wallet = selected.current, account = connected.current;
+   if (!wallet || !account || !config || asset.chainId !== config.chainId) throw new TokenTransferError('This token is not available on the selected network.');
+   const provider = new BrowserProvider(wallet);
+   if (Number((await provider.getNetwork()).chainId) !== asset.chainId) throw new TokenTransferError('Switch to Monad Testnet');
+   const token = new Contract(asset.address, tokenTransferAbi, provider);
+   const [amount, decimals] = await Promise.all([token.balanceOf(account), token.decimals()]);
+   if (Number(decimals) !== asset.decimals) throw new TokenTransferError('Token decimals could not be verified.');
+   if (selected.current !== wallet || connected.current !== account) throw new TokenTransferError('Account changed. Retry.');
+   return amount as bigint;
+ }
+ async function sendToken(asset: RewardAsset, recipient: string, amount: string, sender: string) {
+   if (sender.toLowerCase() !== connected.current.toLowerCase()) return;
+   return transact('Token transfer', 'sendWalletToken', [asset, recipient, amount, sender]);
+ }
  async function transact(label: string, method: string, args: unknown[], value?: bigint) {
    if (!connected.current || !selected.current) { setWalletOpen(true); return; }
    if (!config?.contractAddress) { setNotice({ kind: 'error', text: 'Missions are not available until the contract is deployed.' }); return; }
@@ -104,6 +120,18 @@ export function AppProvider({ children, auth }: { children: ReactNode; auth?: Au
      if (wallet !== selected.current || account !== connected.current) throw new Error('Account changed. Retry.');
      setNotice({ kind: 'pending', text: `Confirm ${label.toLowerCase()} in your wallet.${sponsored ? ' Support Me covers gas.' : ''}` });
      const provider = new BrowserProvider(wallet);
+     const transferring = method === 'sendWalletToken';
+     let transfer: ReturnType<typeof validateTokenTransfer> | undefined;
+     if (transferring) {
+       if (String(args[3]).toLowerCase() !== account.toLowerCase()) throw new TokenTransferError('Account changed. Retry.');
+       const asset = args[0] as RewardAsset;
+       transfer = validateTokenTransfer(asset, config.chainId, account, String(args[1]), String(args[2]), await tokenBalance(asset));
+       const ok = await new Contract(transfer.token, tokenTransferAbi, await provider.getSigner(account)).transfer.staticCall(transfer.to, transfer.units);
+       if (ok === false) throw new TokenTransferError('The token refused this transfer.');
+     }
+     const assertCurrent = async () => {
+       if (wallet !== selected.current || account !== connected.current || Number(await wallet.request({ method: 'eth_chainId' })) !== config.chainId) throw new TokenTransferError('Account changed. Retry.');
+     };
      const controlled=['createGatedContest','createContest','createTokenContest','settleContest','cancelOrRefund','withdrawAITokenCredit','withdrawAICredit'].includes(method);
      if(controlled&&!config.aiController)throw new Error('AI controller unavailable.');
      const communityMethod=['authorizeCommunity','finalizeCommunity','requestHolderSnapshot'].includes(method);
@@ -111,19 +139,20 @@ export function AppProvider({ children, auth }: { children: ReactNode; auth?: Au
      const gateMethod=method==='authorizeCommunity'?'authorize':method==='finalizeCommunity'?'finalize':'requestSnapshot';
      const approving=method==='approveRewardToken';
      if(approving&&!([config.contractAddress,config.aiController].some(s=>s?.toLowerCase()===String(args[1]).toLowerCase())))throw new Error('Invalid token approval spender.');
-     const receipt = await sendMissionTransaction({ contractAddress: communityMethod?config.communityGate!:approving?String(args[0]):controlled?config.aiController!:config.contractAddress, abi:communityMethod?gateAbi:approving?erc20Abi:controlled?aiAbi:undefined, chainId: config.chainId, method:communityMethod?gateMethod:approving?'approve':method==='withdrawAITokenCredit'?'withdrawTokenCredit':method==='withdrawAICredit'?'withdrawCredit':method, args:approving?args.slice(1):args, value,
-       sendSponsored: sponsored ? authWallet!.sendSponsored : undefined,
+     const receipt = await sendMissionTransaction({ contractAddress: transfer?transfer.token:communityMethod?config.communityGate!:approving?String(args[0]):controlled?config.aiController!:config.contractAddress, abi:transfer?tokenTransferAbi:communityMethod?gateAbi:approving?erc20Abi:controlled?aiAbi:undefined, chainId: config.chainId, method:transfer?'transfer':communityMethod?gateMethod:approving?'approve':method==='withdrawAITokenCredit'?'withdrawTokenCredit':method==='withdrawAICredit'?'withdrawCredit':method, args:transfer?[transfer.to,transfer.units]:approving?args.slice(1):args, value,
+       sendSponsored: sponsored ? async tx => { await assertCurrent(); return authWallet!.sendSponsored!(tx); } : undefined,
        preflight: (tx, sponsored) => prepareMissionTransaction(tx, sponsored, {
          balance: () => provider.getBalance(account),
          estimateGas: ({ to, data, value }) => provider.estimateGas({ from: account, to, data, value }),
          fees: () => provider.getFeeData()
        }),
-       getSigner: () => provider.getSigner(account),
+       getSigner: async () => { await assertCurrent(); return provider.getSigner(account); },
        waitForReceipt: hash => provider.waitForTransaction(hash, 1, 90000),
        onSent: hash => { sentHash = hash; setNotice({ kind: 'pending', text: `${label} is confirming on Monad.`, tx: hash }); }
      });
       setNotice({ kind: 'success', text: `${label} confirmed.${sponsored ? ' Gas covered by Support Me.' : ''}`, tx: receipt.hash }); await refreshAfterReceipt(refresh); return receipt;
    } catch (e: any) {
+     if (e instanceof TokenTransferError) { setNotice({ kind: 'error', text: e.message }); return; }
      if (e instanceof TransactionPreflightError) { setNotice({ kind: 'error', text: e.message, values: e.values }); return; }
      const text = sentHash && e.receipt?.status === 0 ? 'The transaction reverted. No contract changes were saved; the network fee was charged.' : sentHash ? 'We could not confirm this transaction succeeded. Check its status before submitting again.'
        : e.code === 'WALLET_REQUEST_PENDING' ? 'A previous wallet request is unresolved. Check My missions and your wallet activity before refreshing; do not pay again blindly.'
@@ -134,6 +163,6 @@ export function AppProvider({ children, auth }: { children: ReactNode; auth?: Au
      setNotice({ kind: 'error', text, tx: sentHash || undefined });
    } finally { pending.current = false; setBusy(false); setWalletOperationPending(false); }
  }
- return <AppContext.Provider value={{ state, config, loading, error, address, balance, wrongChain, walletOpen, setWalletOpen, connect, disconnect, refresh, transact, sign, apiFetch, notice, clearNotice: () => setNotice(undefined), busy, gasSponsored, auth, chooseWallet, lockPayoutWallet }}>{children}</AppContext.Provider>;
+ return <AppContext.Provider value={{ tokenBalance, sendToken, state, config, loading, error, address, balance, wrongChain, walletOpen, setWalletOpen, connect, disconnect, refresh, transact, sign, apiFetch, notice, clearNotice: () => setNotice(undefined), busy, gasSponsored, auth, chooseWallet, lockPayoutWallet }}>{children}</AppContext.Provider>;
 }
 export { shortAddress };
