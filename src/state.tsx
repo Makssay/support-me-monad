@@ -1,4 +1,5 @@
 import { setWalletOperationPending } from './deployment-recovery';
+import { refreshAfterReceipt } from './refresh-after-receipt';
 import { erc20Abi } from '../shared/rewards';
 import { createContext, useContext, useEffect, useState, useRef, type ReactNode } from 'react';
 import { BrowserProvider, formatEther, type Eip1193Provider, type TransactionReceipt } from 'ethers';
@@ -121,7 +122,7 @@ export function AppProvider({ children, auth }: { children: ReactNode; auth?: Au
        waitForReceipt: hash => provider.waitForTransaction(hash, 1, 90000),
        onSent: hash => { sentHash = hash; setNotice({ kind: 'pending', text: `${label} is confirming on Monad.`, tx: hash }); }
      });
-     setNotice({ kind: 'success', text: `${label} confirmed.${sponsored ? ' Gas covered by Support Me.' : ''}`, tx: receipt.hash }); await refresh(); return receipt;
+      setNotice({ kind: 'success', text: `${label} confirmed.${sponsored ? ' Gas covered by Support Me.' : ''}`, tx: receipt.hash }); await refreshAfterReceipt(refresh); return receipt;
    } catch (e: any) {
      if (e instanceof TransactionPreflightError) { setNotice({ kind: 'error', text: e.message, values: e.values }); return; }
      const text = sentHash && e.receipt?.status === 0 ? 'The transaction reverted. No contract changes were saved; the network fee was charged.' : sentHash ? 'We could not confirm this transaction succeeded. Check its status before submitting again.'
