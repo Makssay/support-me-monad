@@ -110,10 +110,14 @@ export default function CreateMission() { useLocale();
    const metadata = JSON.stringify({ communityHash:communitySummary?.hash||'',communitySummary:communitySummary?JSON.stringify(communitySummary):'',title: title.trim(), description: description.trim(), category, requirements: requirements.trim(), creatorName: name.trim(), socialRequired: requireX,targetPost:category==='Replies'?targetPost.trim():'',aiReview:useAI,aiModel:useAI?AI_MODEL:'',aiVersion:useAI?AI_VERSION:'',aiRubric:useAI?JSON.stringify(criteria):'' });
    if (new TextEncoder().encode(metadata).length > 4096) throw new Error('The brief is too long. Shorten it before publishing.');
    if(mode===5&&(count>20||!config?.aiController))throw new Error('AI contest requires 1–20 prizes and a deployed controller.');
+   let freshPythQuote=pythQuote;
+   if(protectedMode&&[0,4,6].includes(mode)){
+    try{const response=await fetch('/api/draw-fee');const quote=await response.json();if(!response.ok||!/^\d+$/.test(quote.wei)||BigInt(quote.wei)<=0n)throw new Error();freshPythQuote=quote.wei;setPythQuote(quote.wei);}
+    catch{throw new Error('Pyth quote unavailable. Retry before funding.');}
+   }
    let deadline=Math.floor(Date.now()/1000)+(quick?600:Math.round(Number(days)*86400));
    const reviewSeconds=quick?600:Math.round(Number(reviewDays)*86400);const workSeconds=quick?600:Math.round(Number(workHours)*3600);
-   const pythReserve=protectedMode&&[0,4,6].includes(mode)?BigInt(pythQuote||'0')*2n:0n;
-   if(protectedMode&&[0,4,6].includes(mode)&&!pythQuote)throw new Error('Pyth quote unavailable. Retry before funding.');
+   const pythReserve=protectedMode&&[0,4,6].includes(mode)?BigInt(freshPythQuote||'0')*2n:0n;
    const executionReserve=protectedMode?parseEther('0.3'):0n;
    let tokenQuote:any;
    if(tokenMode){
