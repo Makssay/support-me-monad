@@ -7,6 +7,7 @@ import { CHAIN_ID, EXPLORER, PUBLIC_RPC } from '../shared/model';
 import { type AuthSession, type AuthWallet } from './state';
 import { embeddedAddress, legacyWalletsToUnlink } from './support-wallet-policy';
 import { WalletRequest } from './wallet-request';
+import { accountSession } from './account-session';
 const monad = defineChain({ id: CHAIN_ID, name: 'Monad Testnet', nativeCurrency: { name: 'MON', symbol: 'MON', decimals: 18 }, rpcUrls: { default: { http: [PUBLIC_RPC] } }, blockExplorers: { default: { name: 'Monadscan', url: EXPLORER } }, testnet: true });
 function WalletBridge({ onSession }: { onSession: (auth: AuthSession) => void }) { useLocale(); 
  const { ready, authenticated, user, login, logout, linkTwitter, linkEmail, getAccessToken } = usePrivy();
@@ -50,7 +51,7 @@ function WalletBridge({ onSession }: { onSession: (auth: AuthSession) => void })
   void (async () => {
    try {
     const token = await getAccessToken(); if (!token) throw new Error();
-    const res = await fetch('/api/auth/session', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, redirect: 'error' });
+    const res = await accountSession(() => fetch('/api/auth/session', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, redirect: 'error' }), () => !cancelled);
     const data = await res.json(); if (cancelled) return;
     if (!res.ok) { setNeedsX(data.code === 'X_REQUIRED'); setError(data.error || 'Your account could not be verified.'); return; }
     setMembership({ id, member: data }); setBackup(false);
