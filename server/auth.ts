@@ -1,5 +1,6 @@
 import { jsonStore, checkpoint, cloudStorage } from './persistence';
-import { recordPublicIdentity } from './public-profiles';
+import { recordPublicIdentity, recordExternalIdentity } from './public-profiles';
+import walletAuthRoutes, { walletAuth, walletAuthEnabled } from './wallet-auth';
 import { PrivyClient } from '@privy-io/node';
 import { Router, type Request, type RequestHandler } from 'express';
 import fs from 'node:fs';
@@ -17,6 +18,16 @@ const members = stored[appId] || (stored[appId] = {});
 const sessions = new WeakMap<Request, { user: IdentityUser; member: Member }>();
 async function identify(req: Request) {
  const provider = req.headers['x-auth-provider'] || 'privy';
+ if (provider === 'wallet') {
+  if (!walletAuthEnabled()) throw new AccountError('AUTH_UNAVAILABLE', 'Wallet sign-in is unavailable.', 503);
+  const match = /^Bearer ([a-f0-9]{64})$/.exec(req.headers.authorization || '');
+  let binding;
+  try { binding = walletAuth().identify(match?.[1] || ''); } catch { throw new AccountError('INVALID_SESSION', 'Your wallet sign-in expired. Connect again.', 401); }
+  const member: Member = { userId: `wallet:${binding.wallet}`, xId: binding.xId, username: binding.username, joinedAt: binding.joinedAt };
+  const user: IdentityUser = { id: member.userId, linked_accounts: [{ type: 'external_verified_wallet', address: binding.wallet, verified_at: binding.joinedAt }] };
+  recordExternalIdentity(member, binding.wallet);
+  sessions.set(req, { user, member }); return { user, member };
+ }
  if (provider !== 'privy' && provider !== 'dynamic') throw new AccountError('INVALID_SESSION', 'Invalid sign-in provider.', 401);
  if (provider === 'privy' ? !client : !dynamicKeys) throw new AccountError('AUTH_UNAVAILABLE', 'Sign in is temporarily unavailable. Please retry.', 503);
  const match = /^Bearer (\S{1,8192})$/.exec(req.headers.authorization || '');
@@ -48,10 +59,12 @@ export const requireMember: RequestHandler = async (req, res, next) => {
 export function requireMemberWallet(req: Request, wallet: string) {
  if (local) return;
  const session = sessions.get(req);
+ if (session?.user.id.startsWith('wallet:') && /^0x[\da-f]{40}$/i.test(wallet) && session.user.id === `wallet:${wallet.toLowerCase()}`) return;
  if (!session || !ownsWallet(session.user, wallet)) throw new AccountError('WALLET_MISMATCH', 'Use a wallet linked to your Support Me account.');
 }
 export function memberXId(req: Request) { return sessions.get(req)?.member.xId; }
 const router = Router();
+router.use(walletAuthRoutes);
 router.post('/auth/session', requireMember, (req, res) => {
  if (local) { res.json({ local: true }); return; }
  const { member, user } = sessions.get(req)!;

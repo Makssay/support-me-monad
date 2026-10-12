@@ -5,7 +5,7 @@ test('Privy wallet wrapper updates do not reconnect the same provider during a c
  try {
   await page.exposeFunction('walletStabilityRpc',({method,params=[]}:any)=>rpc.send(method,params));
   await page.addInitScript(()=>{
-   localStorage.setItem('support.privy-session','1');
+   localStorage.setItem('support.privy-session.privy','1');
    (window as any).qaProviderCalls=0;
    (window as any).ethereum={request:(arg:unknown)=>(window as any).walletStabilityRpc(arg),on:()=>{},removeListener:()=>{}};
   });

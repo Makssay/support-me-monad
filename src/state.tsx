@@ -14,7 +14,7 @@ import { PUBLIC_RPC, shortAddress, type Snapshot, type AppConfig } from '../shar
 interface Wallet extends Eip1193Provider { on?: (event: string, listener: (...args: any[]) => void) => void; removeListener?: (event: string, listener: (...args: any[]) => void) => void; providers?: Wallet[]; isMetaMask?: boolean; isRabby?: boolean; }
 declare global { interface Window { ethereum?: Wallet; } }
 export interface AuthWallet { address: string; label: string; getProvider: () => Promise<Eip1193Provider>; switchChain: (id: number) => Promise<void>; sendSponsored?: (transaction: { to: string; data: string; value: bigint; chainId: number }) => Promise<string>; }
-export interface AuthSession { provider?: 'privy' | 'dynamic'; loginLegacy?: () => void; ready: boolean; authenticated: boolean; wallets: AuthWallet[]; login: () => void; logout: () => Promise<void>; connectWallet: () => void; creatingWallet?: boolean; loginBackup?: () => void; linkX?: () => void; linkEmail?: () => void; retry?: () => void; getAccessToken?: () => Promise<string | null>; member?: { xId: string; username: string; backupEmail: boolean }; accountError?: string; cleanupError?: string; needsX?: boolean; }
+export interface AuthSession { provider?: 'privy' | 'dynamic' | 'wallet'; selectPrivy?: () => void; selectExternal?: () => void; signInContent?: ReactNode; loginLegacy?: () => void; ready: boolean; authenticated: boolean; wallets: AuthWallet[]; login: () => void; logout: () => Promise<void>; connectWallet: () => void; creatingWallet?: boolean; loginBackup?: () => void; linkX?: () => void; linkEmail?: () => void; retry?: () => void; getAccessToken?: () => Promise<string | null>; member?: { xId: string; username: string; backupEmail: boolean }; accountError?: string; cleanupError?: string; needsX?: boolean; }
 interface Notice { kind: 'success' | 'error' | 'pending'; text: string; tx?: string; values?: Record<string, string>; }
 interface Context { tokenBalance: (asset: RewardAsset) => Promise<bigint>; sendToken: (asset: RewardAsset, recipient: string, amount: string, sender: string) => Promise<TransactionReceipt | undefined>; state?: Snapshot; config?: AppConfig; loading: boolean; error: string; address: string; balance: string; wrongChain: boolean; walletOpen: boolean; setWalletOpen: (open: boolean) => void; connect: (wallet?: Wallet) => Promise<void>; disconnect: () => void; refresh: () => Promise<void>; transact: (label: string, method: string, args: unknown[], value?: bigint) => Promise<TransactionReceipt | undefined>; sign: (message: string) => Promise<string>; apiFetch: (url: string, init?: RequestInit) => Promise<Response>; notice?: Notice; clearNotice: () => void; busy: boolean; gasSponsored: boolean; auth?: AuthSession; chooseWallet: (address: string) => Promise<void>; lockPayoutWallet: () => () => void; }
 const AppContext = createContext<Context>(null!);
@@ -88,7 +88,7 @@ export function AppProvider({ children, auth }: { children: ReactNode; auth?: Au
  async function connect(wallet = window.ethereum) {
    if (auth) {
      if (!auth.ready) return;
-     if (!auth.authenticated) { setWalletOpen(false); auth.login(); return; }
+     if (!auth.authenticated) { if (auth.provider === 'wallet') setWalletOpen(true); else { setWalletOpen(false); auth.login(); } return; }
      if (selected.current) { try { await network(selected.current); await walletBalance(); } catch { setNotice({ kind: 'error', text: 'Switch to Monad Testnet in your wallet and retry.' }); } }
      return;
    }

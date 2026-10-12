@@ -23,3 +23,8 @@ export function recordPublicIdentity(user: IdentityUser, member: Member) {
  records[member.xId] = next;
  store.save();
 }
+export function recordExternalIdentity(member: Member, wallet: string) {
+ const previous = records[member.xId];
+ const next = { xId: member.xId, username: member.username, name: previous?.name || member.username, avatarUrl: previous?.avatarUrl, wallets: [...new Set([...(previous?.wallets || []), wallet.toLowerCase()])] };
+ if (JSON.stringify(previous) !== JSON.stringify(next)) { records[member.xId] = next; store.save(); }
+}

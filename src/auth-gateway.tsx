@@ -2,6 +2,7 @@ import { recoverMissingChunk } from './deployment-recovery';
 import { t, useLocale } from './i18n';
 import { Component, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AppProvider, type AuthSession } from './state';
+import { useExternalAuth } from './external-auth';
 const DynamicAuth = lazy(() => import('./dynamic'));
 const PrivyAuth = lazy(() => import('./privy'));
 const SESSION_MARKER = 'support.privy-session';
@@ -19,7 +20,11 @@ class AuthBoundary extends Component<{ children: ReactNode; onFailure: () => voi
 }
 // Keep the public product mounted while authentication loads separately.
 // This marker is only a boolean hint; Privy remains the authority for the session.
-export default function AuthGateway({ appId, chainId, children, dynamicEnvironmentId, authProvider = 'privy', dynamicGasSponsorship = false }: { appId: string; chainId:number; children: ReactNode; dynamicEnvironmentId?:string; authProvider?:'privy'|'dynamic'; dynamicGasSponsorship?:boolean }) { useLocale();
+export default function AuthGateway({ appId, chainId, children, dynamicEnvironmentId, authProvider = 'privy', dynamicGasSponsorship = false, walletAuthEnabled = false }: { appId: string; chainId:number; children: ReactNode; dynamicEnvironmentId?:string; authProvider?:'privy'|'dynamic'; dynamicGasSponsorship?:boolean; walletAuthEnabled?: boolean }) { useLocale();
+ const [external, setExternal] = useState(() => walletAuthEnabled && sessionStorage.getItem('support.login-method') === 'wallet' && !hasOAuthReturn());
+ const externalAuth = useExternalAuth(external, chainId);
+ const selectPrivy = useCallback(() => { sessionStorage.removeItem('support.login-method'); setExternal(false); }, []);
+ const selectExternal = useCallback(() => { sessionStorage.setItem('support.login-method', 'wallet'); setOpening(false); pendingLogin.current = false; setExternal(true); }, []);
  // Router navigation and OAuth query cleanup must not switch a mounted SDK.
  const [provider] = useState<'privy' | 'dynamic'>(() => {
   const requested = new URLSearchParams(location.search).get('auth');
@@ -43,5 +48,6 @@ export default function AuthGateway({ appId, chainId, children, dynamicEnvironme
   if (pendingLogin.current) { const method = pendingLogin.current; pendingLogin.current = false; if (!session.authenticated) { if (method === 'email') session.loginBackup?.(); else session.login(); } }
   setOpening(false);
  }, [session]);
- return <><AppProvider auth={session || deferred}>{children}</AppProvider>{enabled && <AuthBoundary onFailure={() => setOpening(false)}><Suspense fallback={null}>{provider === 'dynamic' ? <DynamicAuth environmentId={dynamicEnvironmentId!} chainId={chainId} gasSponsorship={dynamicGasSponsorship} onSession={onSession}/> : <PrivyAuth appId={appId} chainId={chainId} onSession={onSession}/>}</Suspense></AuthBoundary>}{opening && !session?.ready && <div className="auth-progress" role="status"><p>{t("Preparing sign in…")}</p><button className="button secondary" onClick={() => { pendingLogin.current = false; setOpening(false); }}>{t("Cancel")}</button></div>}</>;
+ const activeAuth = useMemo<AuthSession>(() => ({ ...(external ? externalAuth : session || deferred), ...(walletAuthEnabled ? { selectPrivy, selectExternal } : {}) }), [external, externalAuth, session, deferred, walletAuthEnabled, selectPrivy, selectExternal]);
+ return <><AppProvider auth={activeAuth}>{children}</AppProvider>{enabled && <AuthBoundary onFailure={() => setOpening(false)}><Suspense fallback={null}>{provider === 'dynamic' ? <DynamicAuth environmentId={dynamicEnvironmentId!} chainId={chainId} gasSponsorship={dynamicGasSponsorship} onSession={onSession}/> : <PrivyAuth appId={appId} chainId={chainId} onSession={onSession}/>}</Suspense></AuthBoundary>}{!external && opening && !session?.ready && <div className="auth-progress" role="status"><p>{t("Preparing sign in…")}</p><button className="button secondary" onClick={() => { pendingLogin.current = false; setOpening(false); }}>{t("Cancel")}</button></div>}</>;
 }

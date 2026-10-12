@@ -10,14 +10,14 @@ export function lookupUsage() { const day=new Date().toISOString().slice(0,10); 
 // Shared hard cap for tweet and profile requests; reserve synchronously before fetching.
 export function reserveSocialLookup(){const usage=lookupUsage();if(usage.today>=usage.dailyLimit||usage.total>=usage.totalLimit)return false;saved.total++;const day=new Date().toISOString().slice(0,10);days[day]=(days[day]||0)+1;persist();return true;}
 export const cachedSocial = (post: string) => cached[post];
-export async function verifySocial(url:string,apiKey=process.env.SOCIAL_DATA_API_KEY,fetcher:typeof fetch=fetch):Promise<Verification> {
+export async function verifySocial(url:string,apiKey=process.env.SOCIAL_DATA_API_KEY,fetcher:typeof fetch=fetch,retryUnavailable=false):Promise<Verification> {
  const base={checkedAt:new Date().toISOString(),postUrl:url};
  if(!url)return {...base,status:'manual',note:'No social link. Review the contribution directly.'};
  const id=socialPostId(url); if(!id)return {...base,status:'unsupported',note:'Automatic checks support public X / Twitter post links. Review this link manually.'};
  if(!apiKey)return {...base,status:'unavailable',note:'Social verification is not configured. Creator review is still available.'};
  // Tests inject fetch and never touch the real cache, key or paid API.
  const live=fetcher===fetch;
- if(live){ const previous=cached[id]; if(previous&&Date.now()-Date.parse(previous.checkedAt)<(previous.status==='verified'?86400000:900000))return {...previous,postUrl:url};
+ if(live){ const previous=cached[id]; if(previous&&(!retryUnavailable||previous.status==='verified')&&Date.now()-Date.parse(previous.checkedAt)<(previous.status==='verified'?86400000:900000))return {...previous,postUrl:url};
   const pending=inFlight.get(id); if(pending)return pending;
   if(!reserveSocialLookup())return {...base,status:'unavailable',note:'The social lookup budget limit is reached. No paid request was sent. Try later or request manual review.'};
  }

@@ -31,7 +31,7 @@ function Bootstrap() { useLocale();
  useEffect(() => { const controller = new AbortController(); let cancelled = false; const timer = setTimeout(() => controller.abort(), 15000); void fetch('/api/config', { signal: controller.signal }).then(async r => { if (!r.ok) throw new Error(); const data = await r.json(); if (!cancelled) setConfig(data); }).catch(() => { if (!cancelled) setFailed(true); }).finally(() => clearTimeout(timer)); return () => { cancelled = true; controller.abort(); clearTimeout(timer); }; }, []);
  if (failed && !config) return <div className="auth-loading" role="alert">{t("Could not connect to Support Me.")}<button className="button primary" onClick={() => location.reload()}>{t("Retry")}</button></div>;
  if (!config) return <div className="auth-loading" role="status">{t("Opening Support Me…")}</div>;
- return config.privyAppId || config.dynamicEnvironmentId ? <AuthGateway appId={config.privyAppId || ''} chainId={config.chainId} dynamicEnvironmentId={config.dynamicEnvironmentId} authProvider={config.authProvider} dynamicGasSponsorship={config.dynamicGasSponsorship}><App/></AuthGateway> : <AppProvider><App/></AppProvider>;
+ return config.privyAppId || config.dynamicEnvironmentId ? <AuthGateway walletAuthEnabled={config.walletAuthEnabled} appId={config.privyAppId || ''} chainId={config.chainId} dynamicEnvironmentId={config.dynamicEnvironmentId} authProvider={config.authProvider} dynamicGasSponsorship={config.dynamicGasSponsorship}><App/></AuthGateway> : <AppProvider><App/></AppProvider>;
 }
 createRoot(document.getElementById('root')!, { onRecoverableError(error) {
  // A viewport change cancels only the native wizard animation, not its commit.
