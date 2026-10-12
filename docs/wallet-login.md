@@ -2,7 +2,7 @@
 
 The stable Privy release is preserved at Git tag `checkpoint/privy-stable-2026-10-13` (commit `4a60d8b`) and in `.data/privy-stable-2026-10-13.bundle`. The tag is pushed to GitHub. Work on the fallback is isolated on `codex/wallet-x-fallback`.
 
-Preview (temporary deployment-scoped access, valid for 24 hours from deployment): https://support-me-wallet-preview.support-me.workers.dev/ forwards to the immutable deployment https://support-me-monad-mx7ne6k93-makssays-projects.vercel.app/. The production proxy is unchanged. The preview uses existing D1 persistence and paid social lookup limits; it disables background automation and does not receive the automation private key. A real X link on the preview persists the binding, so use the intended external wallet rather than a disposable address for a real user's account.
+Preview (temporary deployment-scoped access, valid for 24 hours from deployment): https://support-me-wallet-preview.support-me.workers.dev/ forwards to the immutable deployment https://support-me-monad-qmiywenx9-makssays-projects.vercel.app/. The production proxy is unchanged. The preview uses existing D1 persistence and paid social lookup limits; it disables background automation and does not receive the automation private key. A real X link on the preview persists the binding, so use the intended external wallet rather than a disposable address for a real user's account.
 
 ## Activation
 
@@ -12,7 +12,7 @@ The fallback is disabled by default. Its login tab and server endpoints require 
 WALLET_AUTH_X_POST=https://x.com/Makssay_eth/status/2109778998876119439
 ```
 
-Set `APP_ORIGIN` to the canonical HTTPS site origin and use durable `STORAGE_MODE=d1` in hosted deployments. Do not activate an ephemeral filesystem deployment: losing bindings would require users to link again. Keep production on the stable release until the preview passes a real wallet signature and public X reply.
+Set `APP_ORIGIN` to the exact HTTPS origin users open (the preview uses `https://support-me-wallet-preview.support-me.workers.dev`). Login messages use EIP-4361 SIWE; a production hostname in a preview signature can trigger wallet domain warnings. Do not disable wallet security checks. Use the canonical public HTTPS site origin in production and use durable `STORAGE_MODE=d1` in hosted deployments. Do not activate an ephemeral filesystem deployment: losing bindings would require users to link again. Keep production on the stable release until the preview passes a real wallet signature and public X reply.
 
 ## User flow
 
@@ -36,3 +36,5 @@ Real hosted check on 2026-10-13: Rabby wallet `0x2937416b9e66E0Af149f9864d70B550
 ## Rollback
 
 Disable `WALLET_AUTH_ENABLED` to hide the fallback and reject its sessions. For an exact prior release, deploy `checkpoint/privy-stable-2026-10-13`. Do not reset a working tree with local changes; check out the tag in a separate worktree or deployment instead. The stable Vercel deployment is `support-me-monad-bqjjq2p7z-makssays-projects.vercel.app`.
+
+Follow-up: repeated real Rabby login succeeded without another X reply. Updated the custom login text to SIWE and corrected preview APP_ORIGIN; 125 unit tests, TypeScript and hosted signature/replay/session smoke checks passed. The Rabby alert itself still needs user confirmation after the new message. The earlier refresh succeeded, but a later refresh after wallet network interaction did not restore the session; this intermittent case remains unverified.

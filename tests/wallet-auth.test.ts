@@ -3,7 +3,20 @@ import assert from 'node:assert/strict';
 import { Wallet } from 'ethers';
 import { emptyWalletAuth, tokenHash, WalletAuthPolicy } from '../server/wallet-auth-policy';
 import type { Verification } from '../shared/model';
+import { parseSiweMessage, validateSiweMessage } from 'viem/siwe';
 const anchor = 'https://x.com/Makssay_eth/status/2109778998876119439';
+test('Wallet login uses SIWE with the exact deployment origin, chain, nonce and expiry', () => {
+ const s = setup(), challenge = s.policy.challenge(s.wallet.address);
+ const parsed = parseSiweMessage(challenge.message);
+ assert.equal(parsed.domain, 'support-me.example');
+ assert.equal(parsed.uri, s.policy.origin);
+ assert.equal(parsed.scheme, 'https');
+ assert.equal(parsed.chainId, 10143);
+ assert.equal(parsed.nonce, challenge.id);
+ assert.equal(parsed.expirationTime?.getTime(), challenge.expires);
+ assert.ok(validateSiweMessage({ message: parsed, domain: 'support-me.example', nonce: challenge.id, time: new Date(1800000000000) }));
+ assert.equal(validateSiweMessage({ message: parsed, domain: 'attacker.example', time: new Date(1800000000000) }), false);
+});
 function setup() {
  let now = 1800000000000;
  const data = emptyWalletAuth();

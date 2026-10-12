@@ -1,4 +1,6 @@
+import { createSiweMessage } from 'viem/siwe';
 export interface WalletLoginChallenge { id: string; wallet: string; origin: string; chainId: number; issued: number; expires: number; }
 export function walletLoginMessage(c: WalletLoginChallenge) {
- return `${c.origin} wants you to sign in to Support Me.\nWallet: ${c.wallet}\nChain ID: ${c.chainId}\nNonce: ${c.id}\nIssued at: ${new Date(c.issued).toISOString()}\nExpiration: ${new Date(c.expires).toISOString()}\n\nThis signature signs you in. It does not transfer assets or approve spending.`;
+ const origin = new URL(c.origin);
+ return createSiweMessage({ address: c.wallet as `0x${string}`, domain: origin.host, scheme: origin.protocol.slice(0, -1), uri: origin.origin, version: '1', chainId: c.chainId, nonce: c.id, issuedAt: new Date(c.issued), expirationTime: new Date(c.expires), statement: 'Sign in to Support Me. This does not transfer assets or approve spending.' });
 }
