@@ -1,0 +1,15 @@
+{
+  "model": "google/gemini-3.1-flash-image-preview",
+  "source": "login-mascot.webp",
+  "assets": [
+    {
+      "file": "wallet-login-mascot.webp",
+      "costUSD": 0.0685365
+    },
+    {
+      "file": "wallet-login-icon.webp",
+      "costUSD": 0.0459885
+    }
+  ],
+  "totalCostUSD": 0.114525
+}

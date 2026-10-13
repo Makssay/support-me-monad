@@ -1,5 +1,20 @@
 // Interface copy only. Creator-authored text and signing payloads are unchanged.
 export const ru: Record<string, string> = {
+ "YOUR WALLET. YOUR WAY.": "ТВОЙ КОШЕЛЁК. ТВОИ ВОЗМОЖНОСТИ.",
+ "Your wallet.": "Твой кошелёк.",
+ "Your way in.": "Твой вход.",
+ "Connect your wallet and link X with one reply. Next time, just sign in with your wallet.": "Подключи кошелёк и привяжи X одним реплаем. В следующий раз для входа понадобится только кошелёк.",
+ "One wallet for rewards, NFTs and tokens.": "Один кошелёк для наград, NFT и токенов.",
+ "Network fees are paid by you in MON.": "Комиссию сети оплачиваешь сам в MON.",
+ "Choose your wallet": "Выбери кошелёк",
+ "Confirm in your wallet": "Подтверди в кошельке",
+ "Approve the connection and sign the message in your wallet.": "Подтверди подключение и подпиши сообщение в кошельке.",
+ "Sign a message to continue. Your funds stay where they are.": "Для входа подпиши сообщение. Средства остаются на своих кошельках.",
+ "ONE REPLY. ALL SET.": "ОДИН РЕПЛАЙ — И ГОТОВО.",
+ "Make it": "Теперь он",
+ "yours.": "твой.",
+ "Link your X account once. Future sign-ins only need your wallet.": "Привяжи X один раз. Для следующих входов понадобится только кошелёк.",
+
  "Privy not working?": "Privy не работает?",
  "Sign-in method": "Способ входа",
  "Sign in with your wallet": "Войти со своим кошельком",

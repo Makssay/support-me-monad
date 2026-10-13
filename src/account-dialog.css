@@ -17,17 +17,49 @@
 .auth-method-tabs { display:flex; gap:6px; padding:5px; margin:24px 0; border:1px solid #443158; border-radius:12px; background:#100c1b; }
 .auth-method-tabs button { flex:1; border:0; border-radius:8px; padding:12px 8px; background:transparent; color:#bfaed5; font:inherit; cursor:pointer; }
 .auth-method-tabs button[aria-selected="true"] { color:#fff; background:#6941d6; }
-.external-signin-title { margin:24px 0; font-size:30px; }
-.external-signin-heading { display:flex; gap:14px; align-items:flex-start; margin:0 0 22px; }
-.external-signin-heading > svg { color:#bb93ff; flex-shrink:0; margin-top:4px; }
-.external-signin h3 { margin:0 0 8px; font-size:20px; }
-.external-signin p,.external-signin small { color:#c6b5db; line-height:1.6; }
-.external-signin small { display:block; margin-top:16px; }
-.wallet-link-steps { padding-left:24px; display:grid; gap:20px; }
-.wallet-link-steps li { padding-left:5px; color:#d6c7ea; }
-.wallet-link-steps label,.wallet-link-steps strong { display:block; margin-bottom:8px; color:#f7f2ff; }
-.wallet-link-steps input { box-sizing:border-box; width:100%; min-height:48px; padding:12px; border:1px solid #55406d; border-radius:10px; background:#100c1b; color:#fff; font:inherit; }
-.wallet-proof-code { width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; background:#211730; border:1px solid #68518a; border-radius:10px; padding:12px; color:#d4b5ff; cursor:pointer; }
-.wallet-proof-code code { overflow-wrap:anywhere; white-space:normal; text-align:left; user-select:all; }
-.external-signin .text-button { display:block; margin:18px auto 0; }
-.auth-method-tabs button:focus-visible,.wallet-proof-code:focus-visible,.wallet-link-steps input:focus-visible { outline:2px solid #c39aff; outline-offset:3px; }
+.external-signin p,.external-signin small { color:#c6b5db; line-height:1.65; }
+.external-signin-intro { min-height:265px; padding-bottom:20px; }
+.account-dialog .external-signin-intro h2 { max-width:275px; text-wrap:balance; }
+.account-dialog .external-signin-intro .signin-copy>p:last-child { max-width:275px; }
+.external-signin-intro .signin-mascot { right:-12px; bottom:-2px; width:195px; height:292px; }
+.external-wallet-benefits { display:flex; align-items:center; gap:13px; padding:15px 16px; margin:0 0 24px; border:1px solid #443158; border-radius:12px; background:linear-gradient(110deg,#21172e99,#17112266); }
+.external-wallet-benefits>img { width:44px; height:44px; object-fit:contain; flex-shrink:0; border-radius:10px; mask-image:radial-gradient(ellipse,#000 40%,transparent 72%); }
+.external-wallet-benefits p { margin:0; font-size:12px; color:#ede2fc; }
+.external-wallet-benefits span { display:block; color:#bca8d1; font-size:11px; margin-top:2px; }
+.external-signin .external-signin-hint { font-size:11px; text-align:center; margin:12px 0 0; color:#bca8d1; }
+.external-wallet-picker { margin:0 0 14px; }
+.external-wallet-picker label { display:block; font-size:12px; color:#c6b5db; margin-bottom:7px; }
+.external-wallet-picker>div { position:relative; }
+.external-wallet-picker select { appearance:none; width:100%; min-height:50px; padding:12px 42px 12px 16px; border:1px solid #78519b; border-radius:10px; background:#181223; color:#f0e7ff; font:inherit; }
+.external-wallet-picker>div>svg { position:absolute; right:15px; top:16px; pointer-events:none; color:#c49aff; }
+.external-link-heading { margin:28px 0 24px; }
+.external-link-heading .signin-eyebrow { font-size:9px; letter-spacing:2.6px; color:#c293ff; margin:0 0 14px; }
+.account-dialog .external-link-heading h2 { margin:0 0 12px; font-size:35px; line-height:1.15; letter-spacing:-1px; }
+.external-link-heading h2 span { color:#a96aff; }
+.external-link-heading>p:last-child { font-size:14px; margin:0; }
+.wallet-link-steps { list-style:none; counter-reset:link-step; padding:0; margin:0 0 24px; display:grid; gap:22px; }
+.wallet-link-steps li { counter-increment:link-step; position:relative; padding-left:38px; color:#d6c7ea; }
+.wallet-link-steps li::before { content:counter(link-step); position:absolute; left:0; top:0; width:25px; height:25px; display:grid; place-items:center; background:#2d1e43; border:1px solid #60427f; border-radius:50%; color:#d7baff; font-size:11px; font-weight:700; }
+.wallet-link-steps label,.wallet-link-steps strong { display:block; margin-bottom:9px; color:#f7f2ff; font-size:13px; }
+.wallet-link-steps p { font-size:12px; margin:0 0 6px; }
+.wallet-link-steps input { box-sizing:border-box; width:100%; min-height:48px; padding:12px; border:1px solid #55406d; border-radius:10px; background:#100c1b; color:#fff; font:inherit; font-size:13px; }
+.wallet-proof-code { width:100%; min-height:48px; display:flex; align-items:center; justify-content:space-between; gap:12px; background:#211730; border:1px solid #68518a; border-radius:10px; padding:12px; color:#d4b5ff; cursor:pointer; }
+.wallet-proof-code code { overflow-wrap:anywhere; white-space:normal; text-align:left; user-select:all; font-size:13px; }
+.wallet-proof-code>svg { flex-shrink:0; }
+.external-verification-link { display:inline-flex; min-height:44px; align-items:center; gap:7px; font-size:12px; color:#c49aff; }
+.external-signin .text-button { display:block; min-height:44px; margin:10px auto 0; color:#c6b5db; font-size:12px; }
+.auth-method-tabs button:focus-visible,.wallet-proof-code:focus-visible,.wallet-link-steps input:focus-visible,.external-wallet-picker select:focus-visible,.external-signin .button:focus-visible,.external-verification-link:focus-visible,.external-signin .text-button:focus-visible { outline:2px solid #c39aff; outline-offset:3px; }
+.wallet-signin-spinner { animation:wallet-signin-spin 1s linear infinite; }
+@keyframes wallet-signin-spin { to { transform:rotate(360deg); } }
+@media(prefers-reduced-motion:reduce) { .wallet-signin-spinner { animation:none; } }
+@media(max-width:580px) {
+ .external-signin-intro { min-height:275px; }
+ .account-dialog .external-signin-intro h2 { max-width:245px; font-size:29px; }
+ .account-dialog .external-signin-intro .signin-copy>p:last-child { max-width:58%; font-size:12px; }
+ .external-signin-intro .signin-mascot { width:150px; height:225px; right:-16px; bottom:8px; }
+ .external-wallet-benefits { padding:12px; gap:10px; margin-bottom:20px; }
+ .external-wallet-benefits p { font-size:12px; }
+ .external-wallet-benefits span { font-size:11px; }
+ .wallet-link-steps li { padding-left:34px; }
+ .account-dialog .external-link-heading h2 { font-size:29px; }
+}

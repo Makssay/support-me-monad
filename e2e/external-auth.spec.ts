@@ -49,8 +49,13 @@ test('External wallet links X once, restores, clears on account switch and never
   await page.goto('/'); await page.locator('.wallet-button').click();
   await expect(page.getByRole('tab', { name: 'Privy', exact: true })).toHaveAttribute('aria-selected', 'true');
   await page.getByRole('tab', { name: 'Privy не работает?' }).click();
-  await expect(page.getByRole('button', { name: 'Rabby', exact: true })).toBeEnabled();
-  await page.getByRole('button', { name: 'Rabby', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Подключить кошелёк', exact: true })).toBeEnabled();
+  await page.screenshot({path:'.data/wallet-login-redesign-desktop-ru.png'});
+  await page.setViewportSize({width:375,height:812});
+  await page.screenshot({path:'.data/wallet-login-redesign-mobile-ru.png'});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.setViewportSize({width:1440,height:1000});
+  await page.getByRole('button', { name: 'Подключить кошелёк', exact: true }).click();
   await expect(page.getByText('Скопируй личный код')).toBeVisible();
   await page.locator('#wallet-reply-url').fill('https://x.com/test/status/2109778998876119440');
   await page.getByRole('button', { name: 'Подтвердить и войти' }).click();
@@ -87,4 +92,34 @@ test('External wallet links X once, restores, clears on account switch and never
   await expect(page.locator('.wallet-button')).not.toContainText('@qa_external');
   expect(await page.evaluate(() => sessionStorage.getItem('support.external-session'))).toBeNull();
  } finally { rpc.destroy(); }
+});
+
+
+test('Multiple wallet discoveries use one action and an explicit deduplicated selector',async({page})=>{
+ await page.addInitScript(()=>{
+  localStorage.setItem('support.locale','en');
+  const request=async()=>{(window as any).qaRequests=((window as any).qaRequests||0)+1;throw Object.assign(new Error('cancelled'),{code:4001});};
+  const legacy={isRabby:true,request},rabby={request},metamask={isMetaMask:true,request};
+  (window as any).ethereum={...legacy,providers:[legacy,metamask]};
+  addEventListener('eip6963:requestProvider',()=>{dispatchEvent(new CustomEvent('eip6963:announceProvider',{detail:{info:{name:'Rabby Wallet'},provider:rabby}}));});
+ });
+ await page.route('**/api/config',async route=>{const r=await route.fetch();await route.fulfill({response:r,json:{...await r.json(),privyAppId:'qa-external-auth',walletAuthEnabled:true}});});
+ await page.goto('/');await page.locator('.wallet-button').click();await page.getByRole('tab',{name:'Privy not working?'}).click();
+ await expect(page.locator('.external-signin button')).toHaveCount(1);
+ await expect(page.getByLabel('Choose your wallet')).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Connect wallet',exact:true})).toBeEnabled();
+ await page.locator('.external-signin-intro img').evaluate((img:HTMLImageElement)=>img.decode());
+ await page.locator('.external-wallet-benefits img').evaluate((img:HTMLImageElement)=>img.decode());
+ await page.screenshot({path:'.data/wallet-login-redesign-desktop-en.png'});
+ await page.getByRole('button',{name:'Connect wallet',exact:true}).click();
+ await expect(page.getByLabel('Choose your wallet')).toBeFocused();
+ await expect(page.locator('#external-wallet-choice option')).toHaveText(['Rabby','MetaMask']);
+ expect(await page.evaluate(()=>(window as any).qaRequests||0)).toBe(0);
+ await page.getByLabel('Choose your wallet').selectOption('MetaMask');
+ await page.getByRole('button',{name:'Connect wallet',exact:true}).click();
+ await expect(page.getByRole('alert')).toContainText('cancelled');
+ expect(await page.evaluate(()=>(window as any).qaRequests)).toBe(1);
+ await page.setViewportSize({width:375,height:812});
+ await page.screenshot({path:'.data/wallet-login-redesign-picker-mobile.png'});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
