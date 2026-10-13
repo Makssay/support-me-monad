@@ -1,5 +1,7 @@
 // Interface copy only. Creator-authored text and signing payloads are unchanged.
 export const ru: Record<string, string> = {
+ "Post with your meme": "Пост с твоим мемом",
+ "Publish your finished meme in a public X post and paste its link here. The creator reviews the image in your post.": "Опубликуй готовый мем в публичном посте X и вставь ссылку сюда. Автор посмотрит изображение в твоём посте.",
  "YOUR WALLET. YOUR WAY.": "ТВОЙ КОШЕЛЁК. ТВОИ ВОЗМОЖНОСТИ.",
  "Your wallet.": "Твой кошелёк.",
  "Your way in.": "Твой вход.",
@@ -151,7 +153,7 @@ export const ru: Record<string, string> = {
  "Tell us your perspective in a direct reply to the linked post.": "Поделись своим мнением в прямом реплае к указанному посту.",
  "Reply from your connected X account after this mission is published and before its deadline. Stay on topic; no copied or duplicate replies.": "Опубликуй реплай с подключённого аккаунта X после создания задания и до дедлайна. Пиши по теме, без копирования и дублей.",
  "Create an original meme about our project. Add the project context and theme here.": "Создай оригинальный мем о нашем проекте. Добавь сюда описание проекта и тему мема.",
- "An original concept, a readable caption and a finished image. Explain how it fits the brief.": "Оригинальная идея, читаемая подпись и готовое изображение. Объясни, как работа соответствует заданию.",
+ "An original concept, a readable caption and a finished image. Publish the meme in a public X post and submit its link. Explain how it fits the brief.": "Оригинальная идея, читаемая подпись и готовое изображение. Опубликуй мем в публичном посте X и отправь ссылку. Объясни, как работа соответствует заданию.",
  "Review our product and share concrete feedback. Add the product link and what to focus on here.": "Изучи наш продукт и поделись конкретным фидбеком. Добавь ссылку на продукт и укажи, на что обратить внимание.",
  "Describe what you tried, what worked and what could improve, with specific examples. Honest negative feedback is welcome. Reserve a paid place before starting.": "Опиши, что ты попробовал, что работает хорошо и что стоит улучшить, с конкретными примерами. Честная критика приветствуется. Перед работой забронируй оплачиваемое место.",
  "Create social content about our project. Specify the topic, format and intended audience here.": "Создай контент о нашем проекте. Укажи здесь тему, формат и целевую аудиторию.",
