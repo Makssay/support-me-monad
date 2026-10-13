@@ -1,6 +1,12 @@
 # Support Me
 
-Creator contribution network on Monad Testnet. React 19, React Router 7, TypeScript, Vite, Motion, Privy, Express and Solidity escrow. Dark Monad identity and fast page fades preserved.
+Creator contribution network deployed on Monad Mainnet (chain ID 143). Built with React 19, React Router 7, TypeScript, Vite, Motion, Privy, Express and Solidity escrow.
+
+Live app: https://support-me-monad.support-me.workers.dev/
+
+Current release: Privy and external-wallet/X-code login, creator-only submission review tabs with search and pagination, MON withdrawals and ERC-20 reward transfers. Active templates are replies, memes, content, NFT holders, token holders and wallet lists; feedback, bug hunting and the custom builder are marked coming soon. Mainnet gas sponsorship is currently disabled; users need MON for network fees.
+
+Mainnet deployment, verification and isolation from historical testnet data: [launch report](docs/mainnet-launch-2026-10-13.md). Older testnet examples below are development/test references, not the current production network.
 
 Cloud deployment uses Vercel + Cloudflare D1 + a one-minute Cloudflare scheduler. See [CLOUD-DEPLOYMENT.md](CLOUD-DEPLOYMENT.md) for storage guarantees, quotas, secrets and update instructions.
 
@@ -34,7 +40,7 @@ Production: http://127.0.0.1:3001. Public hosting needs Node, HTTPS and persiste
 
 ## nad.fun tokens
 
-V4 supports MON or verified nad.fun ERC20 reward currencies. See [NAD-REWARDS.md](NAD-REWARDS.md) for approvals, claims, network restrictions and demo steps. Mainnet tokens require a separate mainnet deployment; the running app remains on testnet.
+V4 supports MON or verified nad.fun ERC20 reward currencies. See [NAD-REWARDS.md](NAD-REWARDS.md) for approvals, claims, network restrictions and demo steps. Production uses the separate mainnet deployment; reward tokens must match the mission network.
 
 ## Creation fees
 
@@ -50,7 +56,7 @@ V5 charges a fixed creation fee: 0.2 / 0.5 / 2 testnet MON (manual / X / AI). Ma
 | Bug hunting | Bug bounty | Scoped reproducible issue confirmed by creator. Stable issue key pays once; earliest complete report checked manually. |
 | Replies | Raffle | Verified direct reply. Pyth selects equal prizes from locked onchain entries. |
 
-The five selectable categories are Memes, Feedback, Social content, Replies and Bug hunting. Historical Testing and Launch support missions are displayed under Feedback and Social content; immutable onchain metadata is preserved. Categories describe the work; payment format controls reservation, selection and payout. Creator choice and supported text-based AI contests remain separate payment options.
+The underlying work categories are Memes, Feedback, Social content, Replies and Bug hunting; Feedback and Bug hunting templates are currently marked coming soon in the creation UI. Historical Testing and Launch support missions are displayed under Feedback and Social content; immutable onchain metadata is preserved. Categories describe the work; payment format controls reservation, selection and payout. Creator choice and supported text-based AI contests remain separate payment options.
 
 Brief, criteria, funded places, rewards and deadlines are fixed when published. No top-ups or rule edits. At most three active reservations/assignments per wallet. Expired reservations can be released; original proposals remain visible after delivery.
 

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 config({ override: true });
-const keys = ['MAINNET_PRIVATE_KEY','SEED', 'MONAD_PRIVATE_KEY', 'MONAD_RPC_URL', 'OPENROUTER_API_KEY', 'SOCIAL_DATA_API_KEY', 'SOCIALDATA_API_KEY', 'PRIVY_APP_SECRET','DISCORD_CLIENT_SECRET','D1_GATEWAY_SECRET','SCHEDULER_SECRET','SOCIAL_VERIFIER_PRIVATE_KEY','COMMUNITY_ENCRYPTION_KEY'];
+const keys = ['MAINNET_PRIVATE_KEY','MONAD_PRIVATE_KEY_MAINNET','SEED', 'MONAD_PRIVATE_KEY', 'MONAD_RPC_URL', 'OPENROUTER_API_KEY', 'SOCIAL_DATA_API_KEY', 'SOCIALDATA_API_KEY', 'PRIVY_APP_SECRET','DISCORD_CLIENT_SECRET','D1_GATEWAY_SECRET','SCHEDULER_SECRET','SOCIAL_VERIFIER_PRIVATE_KEY','COMMUNITY_ENCRYPTION_KEY'];
 const secrets = keys.map(k => process.env[k]).filter((v): v is string => !!v && v.length > 10);
 if(fs.existsSync('.data/cloud-config.json')){const cloud=JSON.parse(fs.readFileSync('.data/cloud-config.json','utf8'));for(const key of keys)if(typeof cloud[key]==='string'&&cloud[key].length>10)secrets.push(cloud[key]);}
 if(fs.existsSync('.data/social-verifier.json'))secrets.push(JSON.parse(fs.readFileSync('.data/social-verifier.json','utf8')).privateKey);
