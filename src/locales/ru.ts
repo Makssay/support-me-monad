@@ -209,6 +209,8 @@ export const ru: Record<string, string> = {
  "If Pyth misses the fixed recovery deadline, unspent prizes return to the creator. Earlier payouts stay paid.":"Если Pyth не ответит до аварийного срока, остаток призов возвращается автору. Ранее выплаченные награды сохраняются.",
  "Mission progress":"Ход задания",
  "Entries are open":"Приём работ открыт",
+ "All rewards have been paid":"Все награды выплачены",
+ "All rewards have been paid. This mission is no longer accepting entries.":"Все награды выплачены. Приём новых работ завершён.",
  "Work is being reviewed":"Идёт проверка работ",
  "Entries closed · draw is next":"Приём завершён · ожидается розыгрыш",
  "Review missed · automatic draw is next":"Автор пропустил срок · ожидается розыгрыш",

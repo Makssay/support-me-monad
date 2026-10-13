@@ -1,7 +1,15 @@
 import { sameAddress, type Mission, type Contribution } from './model';
+import { parseUnits } from 'ethers';
+
+export function rewardsExhausted(m: Pick<Mission,'remaining'|'reward'|'rewardAsset'>) {
+ const decimals=m.rewardAsset?.decimals??18;
+ const reward=parseUnits(m.reward,decimals);
+ return reward>0n&&parseUnits(m.remaining,decimals)<reward;
+}
 
 export function missionPhase(m: Mission, now: number) {
  if (m.closed) return m.recovery?.active ? 'refunded' : [4,6].includes(m.mode||0)&&!m.draw?.settled ? 'cancelled' : 'closed';
+ if (rewardsExhausted(m)&&!m.recovery?.active&&!m.draw?.requested) return 'rewarded';
  if (m.recovery?.active || m.recoveryAt && now >= m.recoveryAt && !m.draw?.ready && ([4,6].includes(m.mode||0)||m.mode===0&&m.automation?.enabled)) return 'recovery';
  if (m.draw?.ready) return 'settling';
  if (m.draw?.requested) return 'randomness';
@@ -15,8 +23,9 @@ export function missionPhase(m: Mission, now: number) {
 
 export function personalNextStep(m:Mission, entries:Contribution[], wallet:string, now:number) {
  const mine=entries.find(c=>sameAddress(c.contributor,wallet));
- if (!wallet) return 'Sign in to see your next step.';
  if (mine?.status===1) return mine.transferred===false ? 'Your reward is ready to claim from your profile.' : 'Your reward is recorded onchain. Open the payout receipt below.';
+ if (missionPhase(m,now)==='rewarded') return 'All rewards have been paid. This mission is no longer accepting entries.';
+ if (!wallet) return 'Sign in to see your next step.';
  if (m.closed) return m.recovery?.active ? 'The draw did not finish. Pending entries were not judged as winners or losers.' : 'This mission is closed. Check the public results below.';
  if (sameAddress(m.creator,wallet)) return now<m.deadline ? 'Entries are open. Share your mission and review incoming work.' : now<=(m.reviewDeadline??m.deadline)&&![4,6].includes(m.mode||0) ? 'Review submissions before the deadline. Each payment is recorded onchain.' : 'Check the settlement controls below. Anyone can advance an eligible settlement.';
  if (mine?.status===4) return now<(mine.deliveryDeadline||0) ? 'Your reward is reserved. Deliver before your personal deadline.' : 'Your delivery deadline has passed. Release the expired assignment.';
