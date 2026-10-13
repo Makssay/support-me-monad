@@ -3,7 +3,7 @@ import { Wallet, Contract, HDNodeWallet, keccak256, type TransactionRequest } fr
 import { contract, contractAddress, provider, chainId, version, invalidate, local, aiController } from './chain';
 // One serialized executor per API process. A durable pending hash prevents resending after restart.
 function createAutomation(){
- const executorKey=chainId===143?process.env.MAINNET_PRIVATE_KEY:process.env.MONAD_PRIVATE_KEY;
+ const executorKey=chainId===143?(process.env.MONAD_PRIVATE_KEY_MAINNET||process.env.MAINNET_PRIVATE_KEY):process.env.MONAD_PRIVATE_KEY;
  const qa=local&&process.env.AUTOMATION_QA==='1';
  if(version<3||!contract||(!qa&&!executorKey)||(local&&!qa))return;
  const wallet=qa?HDNodeWallet.fromPhrase('test test test test test test test test test test test junk',undefined,"m/44'/60'/0'/0/8").connect(provider):new Wallet(executorKey!,provider);const escrow=new Contract(contractAddress,contract.interface,wallet);
@@ -23,7 +23,7 @@ function createAutomation(){
  async function send(method:string,id:number,target=escrow){
   const action=target.getFunction(method);const gas=await action.estimateGas(id);const fees=await provider.getFeeData();const price=fees.gasPrice;if(!price)throw new Error('Fee unavailable');
   const limit=gas*120n/100n;if(limit*price>150000000000000000n)throw new Error('Execution quote exceeds reimbursement cap');
-  if(await provider.getBalance(wallet.address)<limit*price)throw new Error('Executor needs testnet gas');
+  if(await provider.getBalance(wallet.address)<limit*price)throw new Error('Executor needs MON for gas');
   // Only valid onchain state can reimburse the executor. Never use prize funds for gas.
   await broadcast(await action.populateTransaction(id,{gasLimit:limit,gasPrice:price}),`${method}:${id}`);
  }

@@ -3,8 +3,10 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
-  "functions": { "api/index.js": { "maxDuration": 240, "includeFiles": "{.server/**,deployment.json,ai-deployment.json,artifacts/SupportMe.json}" } },
+  "functions": { "api/*.js": { "maxDuration": 240, "includeFiles": "{.server/**,deployment.json,ai-deployment.json,mainnet-deployment.json,mainnet-ai-deployment.json,artifacts/SupportMe.json}" } },
   "rewrites": [
+    { "source": "/api/internal/tick", "destination": "/api/executor" },
+    { "source": "/api/snapshot-refresh", "destination": "/api/snapshot" },
     { "source": "/api/:path*", "destination": "/api" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],

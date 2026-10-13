@@ -90,7 +90,7 @@ export function AppProvider({ children, auth }: { children: ReactNode; auth?: Au
    if (auth) {
      if (!auth.ready) return;
      if (!auth.authenticated) { if (auth.provider === 'wallet') setWalletOpen(true); else { setWalletOpen(false); auth.login(); } return; }
-     if (selected.current) { try { await network(selected.current); await walletBalance(); } catch { setNotice({ kind: 'error', text: 'Switch to Monad Testnet in your wallet and retry.' }); } }
+     if (selected.current) { try { await network(selected.current); await walletBalance(); } catch { setNotice({ kind: 'error', text: config?.chainId===143?'Switch to Monad in your wallet and retry.':'Switch to Monad Testnet in your wallet and retry.' }); } }
      return;
    }
    if (!wallet) { setWalletOpen(true); return; }
@@ -110,7 +110,7 @@ export function AppProvider({ children, auth }: { children: ReactNode; auth?: Au
    const wallet = selected.current, account = connected.current;
    if (!wallet || !account || !config || asset.chainId !== config.chainId) throw new TokenTransferError('This token is not available on the selected network.');
    const provider = new BrowserProvider(wallet);
-   if (Number((await provider.getNetwork()).chainId) !== asset.chainId) throw new TokenTransferError('Switch to Monad Testnet');
+   if (Number((await provider.getNetwork()).chainId) !== asset.chainId) throw new TokenTransferError(config?.chainId===143?'Switch to Monad':'Switch to Monad Testnet');
    const token = new Contract(asset.address, tokenTransferAbi, provider);
    const [amount, decimals] = await Promise.all([token.balanceOf(account), token.decimals()]);
    if (Number(decimals) !== asset.decimals) throw new TokenTransferError('Token decimals could not be verified.');
@@ -174,7 +174,7 @@ export function AppProvider({ children, auth }: { children: ReactNode; auth?: Au
        : e.code === 'WALLET_REQUEST_PENDING' ? 'A previous wallet request is unresolved. Check My missions and your wallet activity before refreshing; do not pay again blindly.'
        : e.code === 'ACTION_REJECTED' || e.code === 4001 ? 'You cancelled the transaction. Nothing changed.'
        : sponsored ? 'Gas sponsorship could not complete. Nothing was retried with your MON. Check the mission status and try again.'
-       : e.code === 'INSUFFICIENT_FUNDS' ? 'You need more testnet MON for this action and gas. Get some from the faucet.'
+       : e.code === 'INSUFFICIENT_FUNDS' ? config.chainId===143?'You need more MON for this action and gas.':'You need more testnet MON for this action and gas. Get some from the faucet.'
        : 'Transaction could not be completed. Check your balance, account, and the latest mission status, then retry.';
      setNotice({ kind: 'error', text, tx: sentHash || undefined });
    } finally { pending.current = false; setBusy(false); setWalletOperationPending(false); }

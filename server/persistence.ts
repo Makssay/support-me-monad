@@ -13,6 +13,7 @@ let previous = new Map<string, string>();
 let localTail: Promise<void> = Promise.resolve();
 let commitTail: Promise<void> = Promise.resolve();
 let collectionScopes: Set<string> | undefined;
+let jobContext:{owner:string;until:number}|undefined;
 export function reconcile(target: JsonObject, source: JsonObject) {
  for (const key of Object.keys(target)) if (!Object.hasOwn(source, key)) delete target[key];
  for (const [key, value] of Object.entries(source)) {
@@ -39,13 +40,15 @@ export function assertLease() {
 async function rpc(path: string, body: unknown) {
  const origin = process.env.D1_GATEWAY_URL; const secret = process.env.D1_GATEWAY_SECRET;
  if (!origin || !secret || !origin.startsWith('https://') && !origin.startsWith('http://127.0.0.1:')) throw new Error('Durable storage is not configured.');
- const response = await fetch(origin + path, { method: 'POST', headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
+ const started=Date.now();let response:Response;
+ try{response=await fetch(origin + path, { method: 'POST', headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });}
+ catch(e){console.error(JSON.stringify({event:'storage_transport_failure',path,elapsedMs:Date.now()-started,reason:e instanceof Error?e.name:'unknown'}));throw e;}
  if (!response.ok) {const error=new Error(response.status === 409 ? 'Another operation is in progress. Retry shortly.' : 'Durable storage is temporarily unavailable. Retry shortly.');Object.assign(error,{status:response.status});throw error;}
  return response.json() as Promise<any>;
 }
-async function acquire(owner:string){
- const until=Date.now()+8000;
- for(;;){try{return await rpc('/storage/acquire',{owner,paginated:true});}catch(e){
+async function acquire(owner:string,shortLease=false){
+ const until=Date.now()+20000;
+ for(;;){try{return await rpc('/storage/acquire',{owner,paginated:true,shortLease});}catch(e){
   if((e as {status?:number}).status!==409||Date.now()>=until)throw e;
   await new Promise(r=>setTimeout(r,100+Math.floor(Math.random()*200)));
  }}
@@ -96,32 +99,56 @@ async function commitCheckpoint() {
 }
 export function checkpoint() {
  if(!cloudStorage)return Promise.resolve();
- if(collectionScopes)return Promise.reject(new Error('External effects are forbidden during detached collection.'));
+ if(collectionScopes&&!jobContext)return Promise.reject(new Error('External effects are forbidden during detached collection.'));
+ if(jobContext){const next=commitTail.then(commitJobCheckpoint);commitTail=next.catch(()=>{});return next;}
  const next=commitTail.then(commitCheckpoint);commitTail=next.catch(()=>{});return next;
 }
-export async function readPublicSnapshot() {
- const result = await rpc('/storage/public-snapshot', {});
- return { data:decodeStores(result.rows).get('.data/public-snapshot.json'), busy:result.busy===true };
+async function commitJobCheckpoint(){
+ const job=jobContext;
+ if(!job||Date.now()>=job.until-5000)throw new Error('Executor lease expired.');
+ const selected=new Map([...stores].filter(([key,s])=>collectionScopes!.has(key)&&s.dirty).map(([key,s])=>[key,s.data]));
+ const all=encodeStores(selected),changes:{key:string;value:string|null}[]=[];
+ for(const [key,value] of all)if(previous.get(key)!==value)changes.push({key,value});
+ for(const key of previous.keys())if(selected.has(JSON.parse(key)[0])&&!all.has(key))changes.push({key,value:null});
+ try{
+  const current=await acquire(job.owner,true);lease=job.owner;leaseUntil=current.expires;await remainingPages(current,job.owner);
+  const latest=new Map<string,string>(current.rows.map((r:any)=>[r.key,r.value]));
+  if(changes.some(c=>latest.get(c.key)!==previous.get(c.key)))throw new Error('Executor state changed. Retry shortly.');
+  await rpc('/storage/commit',{owner:job.owner,jobOwner:job.owner,changes});
+  for(const c of changes){if(c.value===null)previous.delete(c.key);else previous.set(c.key,c.value);}
+  for(const key of selected.keys())stores.get(key)!.dirty=false;
+ }finally{try{await rpc('/storage/release',{owner:job.owner});}finally{lease=undefined;leaseUntil=0;}}
 }
-export async function durableOperation<T>(operation: () => Promise<T>, options?: {collectionScopes: string[]}): Promise<T> {
+let publicRead:Promise<{data:any;busy:boolean}>|undefined;
+let lastPublicRead:{data:any;busy:boolean}|undefined;
+export async function readPublicSnapshot() {
+ if(publicRead)return publicRead;
+ publicRead=(async()=>{try{const result = await rpc('/storage/public-snapshot', {});
+  lastPublicRead={data:decodeStores(result.rows).get('.data/public-snapshot.json'),busy:result.busy===true};return lastPublicRead;
+ }catch(e){if(lastPublicRead?.data)return {data:{...lastPublicRead.data,time:0},busy:true};throw e;}})().finally(()=>{publicRead=undefined;});
+ return publicRead;
+}
+export async function durableOperation<T>(operation: () => Promise<T>, options?: {collectionScopes: string[]}|{jobScopes:string[]}): Promise<T> {
  if (!cloudStorage) return operation();
  const before = localTail; let release!: () => void; localTail = new Promise<void>(r => { release = r; });
  await before;
  const owner = randomUUID();
  let collectionUntil=0;
+ const isJob=!!options&&'jobScopes' in options;
  try {
-  if(options){const held=await rpc('/storage/collection-acquire',{owner});collectionUntil=held.expires;}
-  const opened = await acquire(owner); lease = owner; leaseUntil = opened.expires;
+  if(options){const held=await rpc(isJob?'/storage/job-acquire':'/storage/collection-acquire',{owner});collectionUntil=held.expires;}
+  const opened = await acquire(owner,!!options); lease = owner; leaseUntil = opened.expires;
   // Older gateways return the complete snapshot without a cursor. New gateways
   // page under the same lease, so readers cannot observe interleaved writes.
   await remainingPages(opened,owner);
   const loaded = decodeStores(opened.rows); previous = new Map(opened.rows.map((r: any) => [r.key, r.value]));
   for (const [key, s] of stores) { const next = { ...structuredClone(s.defaults), ...loaded.get(key) }; reconcile(s.data, next); s.dirty = false; }
   if(options) {
-   // Only display collection opts in. No signing, spending, or budget checkpoint
-   // may run without the strict lease used by ordinary requests.
+   // Detached work holds its own lease. Display collection cannot checkpoint;
+   // executor jobs must durably checkpoint their journal before broadcasting.
    await rpc('/storage/release',{owner});lease=undefined;leaseUntil=0;
-   collectionScopes=new Set(options.collectionScopes);
+   collectionScopes=new Set('jobScopes' in options?options.jobScopes:options.collectionScopes);
+   if(isJob){jobContext={owner,until:collectionUntil};try{const result=await operation();await checkpoint();return result;}catch(e){await checkpoint();throw e;}}
    const result=await operation();
    const selected=new Map([...stores].filter(([key,s])=>collectionScopes!.has(key)&&s.dirty).map(([key,s])=>[key,s.data]));
    const all=encodeStores(selected);
@@ -132,7 +159,7 @@ export async function durableOperation<T>(operation: () => Promise<T>, options?:
    if(changes.length) {
     // Reacquire briefly and compare against the hydrated version before writing.
     // A concurrent update is rejected rather than overwritten or replayed.
-    const current=await acquire(owner);lease=owner;leaseUntil=current.expires;
+    const current=await acquire(owner,true);lease=owner;leaseUntil=current.expires;
     await remainingPages(current,owner);
     if(Date.now()>=collectionUntil-5000)throw new Error('Collection lease expired.');
     const latest=new Map<string,string>(current.rows.map((r:any)=>[r.key,r.value]));
@@ -144,8 +171,10 @@ export async function durableOperation<T>(operation: () => Promise<T>, options?:
   try { const result = await operation(); await checkpoint(); return result; }
   catch (e) { await checkpoint(); throw e; }
  } finally {
-  if (lease === owner) { try { await rpc('/storage/release', { owner }); } catch { /* Expiring lease is safe; never unlock another owner. */ } }
-  if(collectionUntil){try{await rpc('/storage/collection-release',{owner});}catch{/* A crashed collector can delay display refresh, not payment/auth writers. */}}
-  collectionScopes=undefined;lease = undefined; leaseUntil = 0; release();
+  // The acquire response can be lost after D1 grants the lease. Release by our
+  // unique owner even without a local acknowledgement; fencing protects peers.
+  try { await rpc('/storage/release', { owner }); } catch { /* Expiry remains the last resort after a network outage. */ }
+  if(options){try{await rpc(isJob?'/storage/job-release':'/storage/collection-release',{owner});}catch{/* Separate jobs never retain the public writer lease. */}}
+  jobContext=undefined;collectionScopes=undefined;lease = undefined; leaseUntil = 0; release();
  }
 }

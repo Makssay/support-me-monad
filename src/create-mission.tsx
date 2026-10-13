@@ -19,8 +19,8 @@ import { AI_MODEL, AI_VERSION, DEFAULT_RUBRIC, MAX_AI_CRITERIA, parseRubric } fr
 import { StepTransition, TransitionLink } from './view-transitions';
 
 const RECOVERY_DRAFT = 'support.create-recovery';
-function readRecoveryDraft(): Record<string, any> {
- try { const saved = JSON.parse(sessionStorage.getItem(RECOVERY_DRAFT) || 'null'); return saved && Date.now() - saved.savedAt < 300000 ? saved.draft : {}; } catch { return {}; }
+function readRecoveryDraft(chainId?:number,contractAddress?:string): Record<string, any> {
+ try { const saved = JSON.parse(sessionStorage.getItem(RECOVERY_DRAFT) || 'null'); return saved && saved.chainId===chainId && saved.contractAddress===contractAddress && Date.now() - saved.savedAt < 300000 ? saved.draft : {}; } catch { return {}; }
 }
 const steps = ['Mission title', 'Reward', 'Details', 'Review'];
 const num = (value: string | number) => localizedNumber(value);
@@ -28,7 +28,7 @@ const num = (value: string | number) => localizedNumber(value);
 export default function CreateMission() { useLocale(); 
  const { address, transact, busy, setWalletOpen, auth, config, sign, apiFetch, gasSponsored, state } = useApp();
  const navigate = useNavigate();
- const [restored] = useState(readRecoveryDraft);
+ const [restored] = useState(()=>readRecoveryDraft(config?.chainId,config?.contractAddress));
  const [step, setStep] = useState(restored.step ?? 0);
  const [template,setTemplate]=useState<MissionTemplate | undefined>(() => missionTemplates.find(item => item.id === restored.templateId));
  function applyTemplate(next:MissionTemplate) {
@@ -64,14 +64,14 @@ export default function CreateMission() { useLocale();
  const [days, setDays] = useState(restored.days ?? '7');
  const [social, setSocial] = useState(restored.social ?? false);
  const [aiReview,setAIReview]=useState(false);const [criteria,setCriteria]=useState(parseRubric(DEFAULT_RUBRIC));
- const [quick,setQuick]=useState(restored.quick ?? false);const [pythQuote,setPythQuote]=useState<string>();
+ const [quick,setQuick]=useState(config?.chainId!==143&&(restored.quick ?? false));const [pythQuote,setPythQuote]=useState<string>();
  const protectedMode=(config?.version||0)>=3&&[0,1,2,4,6].includes(mode);
  useEffect(()=>{let alive=true;if(protectedMode&&[0,4,6].includes(mode)){setPythQuote(undefined);void fetch('/api/draw-fee').then(r=>r.ok?r.json():Promise.reject()).then(q=>{if(alive)setPythQuote(q.wei);}).catch(()=>{});}else setPythQuote('0');return()=>{alive=false;};},[mode,protectedMode]);
  const [error, setError] = useState('');
  useEffect(() => { sessionStorage.removeItem(RECOVERY_DRAFT); }, []);
  useEffect(() => registerRecoveryDraft(() => {
   if (publishing.current || preparingPublication || busy) throw new Error('Publication unresolved');
-  sessionStorage.setItem(RECOVERY_DRAFT, JSON.stringify({savedAt: Date.now(), draft: {step, templateId:template?.id, community, title, description, requirements, category, mode, targetPost, reviewDays, workHours, asset, tokenInput, reward, slots, days, social, quick}}));
+  sessionStorage.setItem(RECOVERY_DRAFT, JSON.stringify({savedAt: Date.now(), chainId:config?.chainId, contractAddress:config?.contractAddress, draft: {step, templateId:template?.id, community, title, description, requirements, category, mode, targetPost, reviewDays, workHours, asset, tokenInput, reward, slots, days, social, quick}}));
  }), [step, template, community, title, description, requirements, category, mode, targetPost, reviewDays, workHours, asset, tokenInput, reward, slots, days, social, quick, preparingPublication, busy]);
  // New missions use fixed templates; existing AI missions are handled elsewhere.
  const needsAI = false;

@@ -1,3 +1,4 @@
+import {coalesceStateRead} from './state-read';
 const upstreamOrigin = 'https://support-me-monad.vercel.app';
 
 // Fixed destination: this is the app's public entrance, never an open proxy.
@@ -26,4 +27,12 @@ export async function proxyRequest(request: Request, send: typeof fetch = fetch)
   return Response.json({ error: 'Support Me is temporarily unavailable. Please retry shortly.' }, { status: 502, headers: { 'Cache-Control': 'no-store' } });
  }
 }
-export default { fetch: (request: Request) => proxyRequest(request) };
+export function publicEntrance(request:Request,send:typeof fetch=fetch,ctx?:{waitUntil(promise:Promise<unknown>):void}){return coalesceStateRead(request,async()=>{
+ const response=await proxyRequest(request,send);
+ if(response.headers.get('X-State-Refresh-Needed')==='1'&&ctx){
+  const url=new URL('/api/snapshot-refresh',request.url);
+  ctx.waitUntil(proxyRequest(new Request(url,request),send).then(r=>r.body?.cancel()).catch(()=>undefined));
+ }
+ return response;
+});}
+export default { fetch: (request:Request,_env:unknown,ctx:{waitUntil(promise:Promise<unknown>):void})=>publicEntrance(request,fetch,ctx) };

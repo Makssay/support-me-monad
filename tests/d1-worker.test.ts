@@ -4,9 +4,51 @@ import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import {spawn} from 'node:child_process';
+import {createServer} from 'node:http';
 import { promisify } from 'node:util';
 import { transformSync } from 'esbuild';
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
+
+test('lost acquire acknowledgements release only their own writer and executor leases', {timeout:60000},async()=>{
+ const script=transformSync(fs.readFileSync('cloudflare/worker.ts','utf8'),{loader:'ts',format:'esm'}).code;
+ const mf=new Miniflare(convertV4MiniflareOptions({modules:true,script,compatibilityDate:'2026-10-10',d1Databases:['DB'],bindings:{D1_GATEWAY_SECRET:'qa-only-gateway'}}));
+ let drop='/storage/acquire';let dropped=false;const upstream=(await mf.ready).origin;
+ const proxy=createServer(async(req,res)=>{let body='';for await(const part of req)body+=part;const r=await fetch(upstream+req.url,{method:'POST',headers:{Authorization:'Bearer qa-only-gateway','Content-Type':'application/json'},body});const text=await r.text();if(req.url===drop&&!dropped){dropped=true;req.socket.destroy();return;}res.writeHead(r.status,{'Content-Type':'application/json'});res.end(text);});
+ try{
+  const db=await mf.getD1Database('DB');for(const sql of fs.readFileSync('cloudflare/schema.sql','utf8').split(';').filter(s=>s.trim()))await db.prepare(sql).run();
+  await new Promise<void>(r=>proxy.listen(0,'127.0.0.1',r));const gateway=`http://127.0.0.1:${(proxy.address() as any).port}`;
+  for(const target of ['/storage/acquire','/storage/job-acquire']){drop=target;dropped=false;
+   const code=`import {durableOperation} from './server/persistence.ts';try{await durableOperation(async()=>{throw Error('unexpected operation');}${target.includes('job-')?",{jobScopes:['.data/qa-job.json']}":''});throw Error('missing rejection');}catch(e){if(e.message==='unexpected operation'||e.message==='missing rejection')throw e;console.log('lost-ack-rejected');}`;
+   const result=await promisify(execFile)(process.execPath,['--import','tsx','--input-type=module','-e',code],{env:{...process.env,STORAGE_MODE:'d1',D1_GATEWAY_URL:gateway,D1_GATEWAY_SECRET:'qa-only-gateway'},windowsHide:true});assert.match(result.stdout,/lost-ack-rejected/);
+   assert.equal((await db.prepare('SELECT expires FROM app_lease WHERE id=1').first<{expires:number}>())?.expires,0);assert.equal((await db.prepare('SELECT expires FROM app_job_lease WHERE id=1').first<{expires:number}>())?.expires,0);
+  }
+ }finally{await new Promise<void>(r=>proxy.close(()=>r()));await mf.dispose();}
+});
+
+test('slow executor releases writers, journals before effects, and expired jobs cannot commit', {timeout:60000},async()=>{
+ const script=transformSync(fs.readFileSync('cloudflare/worker.ts','utf8'),{loader:'ts',format:'esm'}).code;
+ const mf=new Miniflare(convertV4MiniflareOptions({modules:true,script,compatibilityDate:'2026-10-10',d1Databases:['DB'],bindings:{D1_GATEWAY_SECRET:'qa-only-gateway'}}));
+ try{
+  const db=await mf.getD1Database('DB');for(const sql of fs.readFileSync('cloudflare/schema.sql','utf8').split(';').filter(s=>s.trim()))await db.prepare(sql).run();
+  const url=(await mf.ready).origin,env={...process.env,STORAGE_MODE:'d1',D1_GATEWAY_URL:url,D1_GATEWAY_SECRET:'qa-only-gateway'};
+  const call=(path:string,body:unknown)=>fetch(url+path,{method:'POST',headers:{Authorization:'Bearer qa-only-gateway','Content-Type':'application/json'},body:JSON.stringify(body)});
+  const code="import {jsonStore,durableOperation,checkpoint} from './server/persistence.ts';const s=jsonStore('.data/test-executor.json',{pending:''});await durableOperation(async()=>{console.log('scanning');await new Promise(r=>setTimeout(r,2000));s.data.pending='exact-raw-bytes';s.save();await checkpoint();console.log('journaled');await new Promise(r=>setTimeout(r,500));},{jobScopes:['.data/test-executor.json']});";
+  const child=spawn(process.execPath,['--import','tsx','--input-type=module','-e',code],{env,windowsHide:true,stdio:['ignore','pipe','pipe']});let output='';
+  const ready=new Promise<void>((resolve,reject)=>{child.stdout.on('data',d=>{output+=d;if(output.includes('scanning'))resolve();});child.on('error',reject);});
+  const done=new Promise<void>((resolve,reject)=>{child.on('exit',c=>c===0?resolve():reject(new Error(output)));child.on('error',reject);});await ready;
+  const owner=randomUUID();assert.equal((await call('/storage/job-acquire',{owner})).status,409);
+  assert.equal((await call('/storage/acquire',{owner})).status,200,'login/payment writers remain available while executor scans');
+  assert.equal((await call('/storage/commit',{owner,changes:[{key:JSON.stringify(['.data/test-auth.json','login']),value:'true'}]})).status,200);await call('/storage/release',{owner});
+  await done;assert.match(output,/journaled/);
+  const key=JSON.stringify(['.data/test-executor.json','pending']);assert.equal((await db.prepare('SELECT value FROM app_records WHERE key=?').bind(key).first<{value:string}>())?.value,'"exact-raw-bytes"');
+  assert.equal((await db.prepare('SELECT expires FROM app_lease WHERE id=1').first<{expires:number}>())?.expires,0);
+  assert.equal((await call('/storage/job-acquire',{owner})).status,200);assert.equal((await call('/storage/acquire',{owner})).status,200);
+  await db.prepare('UPDATE app_job_lease SET expires=0 WHERE id=1').run();
+  assert.equal((await call('/storage/commit',{owner,jobOwner:owner,changes:[{key,value:'"unsafe"'}]})).status,409);
+  assert.equal((await db.prepare('SELECT value FROM app_records WHERE key=?').bind(key).first<{value:string}>())?.value,'"exact-raw-bytes"');
+  await call('/storage/release',{owner});const newer=randomUUID();assert.equal((await call('/storage/job-acquire',{owner:newer})).status,200);await call('/storage/job-release',{owner});assert.equal((await call('/storage/job-acquire',{owner:randomUUID()})).status,409);await call('/storage/job-release',{owner:newer});
+ }finally{await mf.dispose();}
+});
 
 test('100 mixed clients keep writing during slow display collection; stale collectors cannot overwrite updates', {timeout:60000},async()=>{
  const script=transformSync(fs.readFileSync('cloudflare/worker.ts','utf8'),{loader:'ts',format:'esm'}).code;

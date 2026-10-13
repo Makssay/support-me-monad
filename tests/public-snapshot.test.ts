@@ -5,7 +5,8 @@ import {coalesceLoad} from '../src/coalesce-load';
 const data={time:20000,value:{config:{chainId:10143,contractAddress:'0xABC'},missions:[],contributions:[],profiles:[],updatedAt:'2026-10-13T00:00:00Z'}};
 test('persisted display snapshots retain timestamp and mark delayed data explicitly',()=>{
  assert.equal(publicSnapshot(data,10143,'0xabc',30000)?.stale,false);
- const stale=publicSnapshot(data,10143,'0xabc',40000);
+ assert.equal(publicSnapshot(data,10143,'0xabc',50000)?.stale,false,'normal 30-second polling is not delayed data');
+ const stale=publicSnapshot(data,10143,'0xabc',120000);
  assert.equal(stale?.stale,true);assert.equal(stale?.updatedAt,data.value.updatedAt);
  assert.equal(publicSnapshot({...data,time:0},10143,'0xabc',40000)?.stale,true);
 });

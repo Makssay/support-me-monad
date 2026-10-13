@@ -1,0 +1,10 @@
+{
+  "chainId": 143,
+  "walletChallengeBoundToMainnetAndPublicOrigin": true,
+  "ephemeralWalletSignatureAccepted": true,
+  "replayedSignatureRejected": true,
+  "executorReady": true,
+  "permanentAccountCreated": false,
+  "paidXLookups": 0,
+  "onchainTransactions": 0
+}

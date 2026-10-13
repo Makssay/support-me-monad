@@ -12,7 +12,7 @@ function permitted(header: string | undefined) {
  return !!expected && Buffer.byteLength(actual)===Buffer.byteLength(expected)&&timingSafeEqual(Buffer.from(actual),Buffer.from(expected));
 }
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
- const path=new URL(req.url||'/', 'https://local.invalid').pathname;
+ const incoming=new URL(req.url||'/', 'https://local.invalid');const path=incoming.pathname;
  res.setHeader('Cache-Control','no-store');
  if(path==='/api/health'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({ok:cloudStorage,storage:cloudStorage?'d1':'not_configured'}));return;}
  if(!cloudStorage){res.statusCode=503;res.end(JSON.stringify({error:'Durable storage is not configured.'}));return;}
@@ -23,13 +23,17 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   try {
    const stored=await readPublicSnapshot();
    displaySnapshot=publicSnapshot(stored.data,chainId,contractAddress);
-   if(displaySnapshot&&(!displaySnapshot.stale||stored.busy)){sendSnapshot(displaySnapshot);return;}
+   if(displaySnapshot&&incoming.searchParams.get('refresh')!=='1'){
+    if(!stored.busy&&Date.now()-Number(stored.data?.time||0)>=15000)res.setHeader('X-State-Refresh-Needed','1');
+    sendSnapshot(displaySnapshot);return;
+   }
+   if(displaySnapshot&&stored.busy){sendSnapshot(displaySnapshot);return;}
   } catch { /* The normal fresh read can still recover if the cache read fails. */ }
  }
  if(path==='/api/internal/tick') {
   if(req.method!=='POST'||!permitted(req.headers.authorization)){res.statusCode=401;res.end(JSON.stringify({error:'Not authorized.'}));return;}
-  try { const result=await durableOperation(async()=>{resetProcessCache();await runAutomationTick();return {ok:true};});res.setHeader('Content-Type','application/json');res.end(JSON.stringify(result)); }
-  catch {res.statusCode=503;res.end(JSON.stringify({error:'Executor temporarily unavailable.'}));}return;
+  try { const result=await durableOperation(async()=>{resetProcessCache();await runAutomationTick();return {ok:true};},{jobScopes:[`.data/automation-${chainId}-${contractAddress.toLowerCase()}.json`,`.data/community-${chainId}.json`,'.data/public-snapshot.json']});res.setHeader('Content-Type','application/json');res.end(JSON.stringify(result)); }
+  catch(e) {if((e as {status?:number}).status===409){res.statusCode=202;res.end(JSON.stringify({ok:true,busy:true}));}else{res.statusCode=503;res.end(JSON.stringify({error:'Executor temporarily unavailable.'}));}}return;
  }
  // Express only emits JSON or redirects for API routes. Buffer its final end
  // until every persisted invariant is committed; no success/signature can
@@ -46,10 +50,12 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   res.end=originalEnd;
   if(displaySnapshot&&res.statusCode>=500){sendSnapshot({...displaySnapshot,stale:true});return;}
   originalEnd(...(captured||[]) as [any]);
- } catch {
+ } catch(e) {
+  const status=(e as {status?:number}).status;
+  console.error(JSON.stringify({event:'durable_request_failure',path,status,reason:e instanceof Error?e.name:'unknown'}));
   res.end=originalEnd;
   if(displaySnapshot&&!res.headersSent){sendSnapshot({...displaySnapshot,stale:true});return;}
   if(!res.headersSent){res.removeHeader('Content-Length');res.removeHeader('Location');res.setHeader('Content-Type','application/json');res.statusCode=503;}
-  originalEnd(JSON.stringify({error:'Another operation is in progress or storage is unavailable. Retry shortly.'}));
+  originalEnd(JSON.stringify({error:'Another operation is in progress or storage is unavailable. Retry shortly.',code:status===409?'STORAGE_BUSY':'STORAGE_UNAVAILABLE'}));
  }
 }

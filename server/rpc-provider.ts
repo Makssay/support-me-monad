@@ -6,12 +6,18 @@ const reads=new Set(['eth_chainId','eth_blockNumber','eth_call','eth_estimateGas
 export class ResilientRpcProvider extends JsonRpcProvider {
  private verified=new Set<string>();
  private cooling=new Map<string,number>();
+ private nextRequest=new Map<string,number>();
  constructor(private endpoints:string[],private expectedChain:number,private timeoutMs=4000){
   super(endpoints[0],expectedChain,{staticNetwork:true,batchMaxCount:1});
  }
  private async request(url:string,payload:JsonRpcPayload|JsonRpcPayload[]){
+  // Snapshot collection and the executor share public provider quotas. Reserve
+  // request slots synchronously before awaiting; parallel readers stay bounded.
+  const now=Date.now(),slot=Math.max(now,this.nextRequest.get(url)||0);
+  this.nextRequest.set(url,slot+120);
+  if(slot>now)await new Promise(r=>setTimeout(r,slot-now));
   const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:AbortSignal.timeout(this.timeoutMs)});
-  if(!response.ok)throw new Error('RPC transport unavailable.');
+  if(!response.ok)throw Object.assign(new Error('RPC transport unavailable.'),{rpcStatus:response.status});
   const data=await response.json();
   const rows=Array.isArray(data)?data:[data];const sent=Array.isArray(payload)?payload:[payload];
   if(rows.length!==sent.length||rows.some((row:any)=>!row||row.jsonrpc!=='2.0'||!sent.some(p=>p.id===row.id)||!('result' in row)&&!row.error))throw new Error('Invalid RPC response.');
@@ -32,14 +38,14 @@ export class ResilientRpcProvider extends JsonRpcProvider {
     // Provider throttling/internal failures may use a JSON-RPC error with HTTP 200.
     if(safe&&result.some((r:any)=>[-32603,-32005].includes(r.error?.code)))throw new Error('RPC unavailable.');
     return result;
-   } catch { this.cooling.set(url,Date.now()+10000); }
+   } catch(e) { console.error(JSON.stringify({event:'rpc_endpoint_unavailable',method:(Array.isArray(payload)?payload[0]:payload).method,status:(e as {rpcStatus?:number}).rpcStatus,reason:e instanceof Error?e.name:'unknown'}));this.cooling.set(url,Date.now()+10000); }
   }
   throw new Error('Monad RPC is temporarily unavailable. Retry shortly.');
  }
 }
 
 export function rpcEndpoints(primary:string,extra:string|undefined,chain:number){
- const defaults=chain===10143?['https://rpc-testnet.monadinfra.com']:[];
+ const defaults=chain===10143?['https://rpc-testnet.monadinfra.com']:chain===143?['https://rpc-mainnet.monadinfra.com']:[];
  const urls=[...new Set([primary,...(extra===undefined?defaults:extra.split(',').map(s=>s.trim()).filter(Boolean))])];
  if(urls.length>3||urls.some(s=>{const u=new URL(s);return u.protocol!=='https:'&&!(u.protocol==='http:'&&['127.0.0.1','localhost'].includes(u.hostname));}))throw new Error('Invalid RPC configuration.');
  return urls;

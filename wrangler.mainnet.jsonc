@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "support-me-mainnet-storage",
+  "main": "cloudflare/worker.ts",
+  "compatibility_date": "2026-10-10",
+  "workers_dev": true,
+  "observability": { "enabled": false },
+  "triggers": { "crons": [] },
+  "vars": { "APP_ORIGIN": "https://support-me-monad.vercel.app" },
+  "account_id": "236f111e5d8f14f7a5375ce278074213",
+  "d1_databases": [{ "binding": "DB", "database_name": "support-me-mainnet", "database_id": "86b3098b-dd41-42af-95fd-0efa44f713c5" }]
+}

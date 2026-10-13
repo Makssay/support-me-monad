@@ -5,5 +5,5 @@ import type { Snapshot } from '../shared/model';
 export function publicSnapshot(data: any, chainId: number, contractAddress: string, now = Date.now()): Snapshot | undefined {
  const value = data?.value;
  if (!value || value.config?.chainId !== chainId || value.config?.contractAddress?.toLowerCase() !== contractAddress.toLowerCase() || !Array.isArray(value.missions) || !Array.isArray(value.contributions) || !Array.isArray(value.profiles) || !Number.isFinite(data.time) || data.time > now || !value.updatedAt) return;
- return { ...value, stale:now-data.time>=15000 };
+ return { ...value, stale:data.time<=0||now-data.time>=90000 };
 }

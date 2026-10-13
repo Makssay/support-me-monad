@@ -1,0 +1,38 @@
+[
+  {
+    "name": "escrow",
+    "address": "0x49743a16D7B3dDe2214a5B1c3D6f5871f58Fa131",
+    "identifier": "SupportMe.sol:SupportMe",
+    "input": "artifacts/standard-input.json",
+    "tx": "0x92c9a2a1402c722b5a0fbb05b96a3637d87af947dfd7a977c1bad14f8db2770d",
+    "status": 202,
+    "verificationId": "4ffb2e7d-327b-493c-b728-bc0bbf8103ae"
+  },
+  {
+    "name": "fees",
+    "address": "0xBF5d66a89cc86de826eBa40EeACb6B2D5D2C6fC8",
+    "identifier": "CreationFees.sol:CreationFees",
+    "input": "artifacts/fees-standard-input.json",
+    "tx": "0x429334d1d0deb14e1ef1ae5346e1a765a8facbc2bec16a3bc753405adb4b0eee",
+    "status": 202,
+    "verificationId": "8016ffe8-2ebb-4ba9-a2d6-cd9964cb88ce"
+  },
+  {
+    "name": "community",
+    "address": "0x7D01A3F02876eF4a0851d09E3dfFCc2fDF2571b7",
+    "identifier": "CommunityGate.sol:CommunityGate",
+    "input": "artifacts/standard-input.json",
+    "tx": "0x92c9a2a1402c722b5a0fbb05b96a3637d87af947dfd7a977c1bad14f8db2770d",
+    "status": 202,
+    "verificationId": "636b585b-3065-4a44-9c3c-ac62b95537c6"
+  },
+  {
+    "name": "settlement",
+    "address": "0x4a330fD05d109fA109978484a777f33363bee206",
+    "identifier": "SettlementEngine.sol:SettlementEngine",
+    "input": "artifacts/standard-input.json",
+    "tx": "0x92c9a2a1402c722b5a0fbb05b96a3637d87af947dfd7a977c1bad14f8db2770d",
+    "status": 202,
+    "verificationId": "33cc9ebb-0198-4ed0-adc1-ed890bf980fe"
+  }
+]

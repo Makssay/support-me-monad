@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "chainId": 143,
+  "address": "0x49743a16D7B3dDe2214a5B1c3D6f5871f58Fa131",
+  "exactEscrowRuntime": true,
+  "feeRuntimeAndTreasury": true,
+  "nestedContracts": true,
+  "feeExemptWallets": [
+    "0xf337687dD73c1A13EFE39393a000f55a95B1ac54"
+  ],
+  "missionCount": 0,
+  "contributionCount": 0,
+  "pythFeeMON": "1.4",
+  "deploymentGasMON": "1.06069341",
+  "checkedAt": "2026-10-13T11:22:35.186Z"
+}

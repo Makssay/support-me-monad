@@ -15,7 +15,7 @@ export class TransactionPreflightError extends Error {
 export async function prepareMissionTransaction(tx: SponsoredTransaction, sponsored: boolean, d: Dependencies): Promise<GasQuote> {
  if (sponsored && tx.value === 0n) return {};
  const balance = await d.balance();
- if (balance < tx.value) throw new TransactionPreflightError(sponsored ? 'Not enough MON. Balance: {available} MON. Rewards require {required} MON. Gas is covered by Support Me.' : 'Not enough MON. Balance: {available} MON. Rewards require {required} MON, plus gas. Reduce the budget or add testnet MON.', { available: formatEther(balance), required: formatEther(tx.value) });
+ if (balance < tx.value) throw new TransactionPreflightError(sponsored ? 'Not enough MON. Balance: {available} MON. Rewards require {required} MON. Gas is covered by Support Me.' : 'Not enough MON. Balance: {available} MON. Rewards require {required} MON, plus gas. Reduce the budget or add MON.', { available: formatEther(balance), required: formatEther(tx.value) });
  if (sponsored) return {};
  let estimate: bigint, fees: Awaited<ReturnType<Dependencies['fees']>>;
  try { [estimate, fees] = await Promise.all([d.estimateGas(tx), d.fees()]); }
@@ -25,6 +25,6 @@ export async function prepareMissionTransaction(tx: SponsoredTransaction, sponso
  const price = fees.maxFeePerGas ?? fees.gasPrice;
  if (price === null || price < 0n) throw new TransactionPreflightError('Could not quote the network fee. Nothing was sent. Try again.');
  const required = tx.value + gasLimit * price;
- if (balance < required) throw new TransactionPreflightError('Not enough MON. Balance: {available} MON. Required: {required} MON including maximum gas. Reduce the budget or add testnet MON.', { available: formatEther(balance), required: formatEther(required) });
+ if (balance < required) throw new TransactionPreflightError('Not enough MON. Balance: {available} MON. Required: {required} MON including maximum gas. Reduce the budget or add MON.', { available: formatEther(balance), required: formatEther(required) });
  return fees.maxFeePerGas !== null ? { gasLimit, maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas ?? 0n } : { gasLimit, gasPrice: price };
 }
