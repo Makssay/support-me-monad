@@ -2,6 +2,8 @@
 
 The stable Privy checkpoint remains `checkpoint/privy-stable-2026-10-13`.
 
+Follow-up: [concurrency and RPC changes, including a hosted 100-client burst](concurrency-2026-10-13.md). That report records the latest preview and gateway versions; versions below describe the initial capacity rollout.
+
 ## Applied to the shared storage gateway
 
 - Added an expression index on `json_extract(key,'$[0]')`. The existing public snapshot query uses this index without changing its result or authorization.

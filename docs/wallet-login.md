@@ -2,7 +2,7 @@
 
 The stable Privy release is preserved at Git tag `checkpoint/privy-stable-2026-10-13` (commit `4a60d8b`) and in `.data/privy-stable-2026-10-13.bundle`. The tag is pushed to GitHub. Work on the fallback is isolated on `codex/wallet-x-fallback`.
 
-Preview (temporary deployment-scoped access, valid for 24 hours from deployment): https://support-me-wallet-preview.support-me.workers.dev/ forwards to the immutable deployment https://support-me-monad-n55zlb04e-makssays-projects.vercel.app/. The production proxy is unchanged. The preview uses existing D1 persistence and paid social lookup limits; it disables background automation and does not receive the automation private key. A real X link on the preview persists the binding, so use the intended external wallet rather than a disposable address for a real user's account.
+Preview (temporary deployment-scoped access, valid for 24 hours from deployment): https://support-me-wallet-preview.support-me.workers.dev/ forwards to the immutable deployment https://support-me-monad-1b3vtnfqh-makssays-projects.vercel.app/. The production proxy is unchanged. The preview uses existing D1 persistence and paid social lookup limits; it disables background automation and does not receive the automation private key. A real X link on the preview persists the binding, so use the intended external wallet rather than a disposable address for a real user's account.
 
 ## Activation
 

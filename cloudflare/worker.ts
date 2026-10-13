@@ -31,9 +31,18 @@ export default {
    if (path === '/storage/public-snapshot') {
     const rows=(await env.DB.prepare("SELECT key,value FROM app_records WHERE json_extract(key,'$[0]')='.data/public-snapshot.json'").all<{key:string;value:string}>()).results;
     const held=await env.DB.prepare('SELECT expires FROM app_lease WHERE id=1').first<{expires:number}>();
-    return json({rows,busy:!!held&&held.expires>now});
+    const collecting=await env.DB.prepare('SELECT expires FROM app_collection_lease WHERE id=1').first<{expires:number}>();
+    return json({rows,busy:!!held&&held.expires>now||!!collecting&&collecting.expires>now});
    }
    if (typeof body.owner !== 'string' || !/^[\da-f-]{36}$/i.test(body.owner)) return json({error:'Invalid lease'},400);
+   if(path==='/storage/collection-acquire'){
+    const expires=now+300000;
+    const changed=await env.DB.prepare('UPDATE app_collection_lease SET owner=?,expires=? WHERE id=1 AND expires<?').bind(body.owner,expires,now).run();
+    return changed.meta.changes?json({expires}):json({error:'Collection busy'},409);
+   }
+   if(path==='/storage/collection-release'){
+    await env.DB.prepare('UPDATE app_collection_lease SET expires=0 WHERE id=1 AND owner=?').bind(body.owner).run();return json({ok:true});
+   }
    if (path === '/storage/acquire') {
     const expires = now + 300000;
     const changed=await env.DB.prepare('UPDATE app_lease SET owner=?, expires=? WHERE id=1 AND expires<?').bind(body.owner,expires,now).run();

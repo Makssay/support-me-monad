@@ -3,9 +3,44 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
+import {spawn} from 'node:child_process';
 import { promisify } from 'node:util';
 import { transformSync } from 'esbuild';
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
+
+test('100 mixed clients keep writing during slow display collection; stale collectors cannot overwrite updates', {timeout:60000},async()=>{
+ const script=transformSync(fs.readFileSync('cloudflare/worker.ts','utf8'),{loader:'ts',format:'esm'}).code;
+ const mf=new Miniflare(convertV4MiniflareOptions({modules:true,script,compatibilityDate:'2026-10-10',d1Databases:['DB'],bindings:{D1_GATEWAY_SECRET:'qa-only-gateway'}}));
+ try{
+  const db=await mf.getD1Database('DB');for(const sql of fs.readFileSync('cloudflare/schema.sql','utf8').split(';').filter(s=>s.trim()))await db.prepare(sql).run();
+  const url=(await mf.ready).origin,env={...process.env,STORAGE_MODE:'d1',D1_GATEWAY_URL:url,D1_GATEWAY_SECRET:'qa-only-gateway'};
+  const run=(code:string)=>promisify(execFile)(process.execPath,['--import','tsx','--input-type=module','-e',code],{env,windowsHide:true});
+  const call=(path:string,body:unknown)=>fetch(url+path,{method:'POST',headers:{Authorization:'Bearer qa-only-gateway','Content-Type':'application/json'},body:JSON.stringify(body)});
+  await run("import {jsonStore,durableOperation} from './server/persistence.ts';const s=jsonStore('.data/mixed-counter.json',{count:0});await durableOperation(async()=>{s.save()});");
+  const collector=(conflict=false)=>{
+   const code=`import {jsonStore,durableOperation} from './server/persistence.ts';const s=jsonStore('.data/mixed-display.json',{value:0});try{await durableOperation(async()=>{console.log('collecting');await new Promise(r=>setTimeout(r,4000));s.data.value++;s.save();},{collectionScopes:['.data/mixed-display.json']});console.log('collected');}catch(e){console.log(e.message);process.exitCode=${conflict?0:1};}`;
+   const child=spawn(process.execPath,['--import','tsx','--input-type=module','-e',code],{env,windowsHide:true,stdio:['ignore','pipe','pipe']});let output='';
+   const ready=new Promise<void>((resolve,reject)=>{child.stdout.on('data',d=>{output+=d;if(output.includes('collecting'))resolve();});child.on('error',reject);});
+   const done=new Promise<string>((resolve,reject)=>{child.on('exit',c=>c===0?resolve(output):reject(new Error(output)));child.on('error',reject);});return {ready,done};
+  };
+  const slow=collector();await slow.ready;
+  const held=await db.prepare('SELECT expires FROM app_lease WHERE id=1').first<{expires:number}>();assert.equal(held?.expires,0,'RPC collection holds no global lease');
+  assert.equal((await call('/storage/collection-acquire',{owner:randomUUID()})).status,409,'only one collector may read Monad at a time');
+  await call('/storage/collection-release',{owner:randomUUID()});
+  assert.equal((await (await call('/storage/public-snapshot',{})).json() as any).busy,true,'a stale owner cannot release the collector; display reads know refresh is running');
+  const started=Date.now();const timings:number[]=[];
+  const writer="import {jsonStore,durableOperation} from './server/persistence.ts';const s=jsonStore('.data/mixed-counter.json',{count:0});for(let i=0;i<4;i++)await durableOperation(async()=>{s.data.count++;await new Promise(r=>setTimeout(r,15));s.save();});";
+  await Promise.all([...Array.from({length:5},()=>run(writer)),...Array.from({length:95},async()=>{for(let i=0;i<3;i++){const t=Date.now();const response=await call('/storage/public-snapshot',{});assert.equal(response.status,200);await response.json();timings.push(Date.now()-t);}})]);
+  assert.match(await slow.done,/collected/);
+  const count=await db.prepare('SELECT value FROM app_records WHERE key=?').bind(JSON.stringify(['.data/mixed-counter.json','count'])).first<{value:string}>();assert.equal(count?.value,'20','all five independent writers persisted all updates');
+  timings.sort((a,b)=>a-b);console.log(JSON.stringify({mixedClients:100,reads:285,writes:20,elapsedMs:Date.now()-started,readP95Ms:timings[Math.floor(timings.length*.95)]}));
+  const stale=collector(true);await stale.ready;
+  const owner=randomUUID();assert.equal((await call('/storage/acquire',{owner})).status,200);
+  const key=JSON.stringify(['.data/mixed-display.json','value']);assert.equal((await call('/storage/commit',{owner,changes:[{key,value:'99'}]})).status,200);await call('/storage/release',{owner});
+  assert.match(await stale.done,/Snapshot changed during collection/);assert.equal((await db.prepare('SELECT value FROM app_records WHERE key=?').bind(key).first<{value:string}>())?.value,'99');
+  const denied=await run("import {jsonStore,durableOperation,checkpoint} from './server/persistence.ts';const s=jsonStore('.data/private-denied.json',{});await durableOperation(async()=>{try{s.save();throw Error('unsafe-save');}catch(e){if(!e.message.includes('private state'))throw e;}try{await checkpoint();throw Error('unsafe-checkpoint');}catch(e){if(!e.message.includes('forbidden'))throw e;}},{collectionScopes:['.data/mixed-display.json']});console.log('denied');");assert.match(denied.stdout,/denied/);
+ }finally{await mf.dispose();}
+});
 
 test('indexed public reads stay small under 100 readers; paged snapshots exceed 3 MB without losing lease isolation', {timeout:60000},async()=>{
  const script=transformSync(fs.readFileSync('cloudflare/worker.ts','utf8'),{loader:'ts',format:'esm'}).code;

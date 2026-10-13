@@ -42,7 +42,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     res.end=((...args:any[])=>{captured=args;resolve();return res;}) as typeof res.end;
     try{app(req,res);}catch(e){reject(e);}
    });
-  });
+  },path==='/api/state'&&req.method==='GET'?{collectionScopes:['.data/public-snapshot.json',`.data/events-${chainId}-${contractAddress.toLowerCase()}.json`]}:undefined);
   res.end=originalEnd;
   if(displaySnapshot&&res.statusCode>=500){sendSnapshot({...displaySnapshot,stale:true});return;}
   originalEnd(...(captured||[]) as [any]);
