@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { walletOrigin } from './wallet-origin';
+import { walletOrigin, walletDeploymentAlias } from './wallet-origin';
 import { rateLimit } from 'express-rate-limit';
 import { jsonStore } from './persistence';
 import { chainId } from './chain';
@@ -9,7 +9,8 @@ import { emptyWalletAuth, WalletAuthPolicy } from './wallet-auth-policy';
 const store = jsonStore('.data/wallet-auth.json', emptyWalletAuth());
 export const walletAuthEnabled = () => process.env.WALLET_AUTH_ENABLED === '1' && !!socialPostId(process.env.WALLET_AUTH_X_POST || '') && !!process.env.SOCIAL_DATA_API_KEY;
 export function walletAuth(requestOrigin?:string) {
- const origin=walletOrigin(process.env.APP_ORIGIN||'http://127.0.0.1:3001',process.env.APP_ORIGIN_ALIASES||'',requestOrigin);
+ const aliases=[process.env.APP_ORIGIN_ALIASES||'',walletDeploymentAlias(process.env.VERCEL_ENV,process.env.VERCEL_URL)].filter(Boolean).join(',');
+ const origin=walletOrigin(process.env.APP_ORIGIN||'http://127.0.0.1:3001',aliases,requestOrigin);
  return new WalletAuthPolicy(store.data, origin, chainId, process.env.WALLET_AUTH_X_POST || '', store.save);
 }
 const router = Router();

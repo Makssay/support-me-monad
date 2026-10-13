@@ -646,6 +646,8 @@ export const ru: Record<string, string> = {
   "Connect a wallet to start or finalize the draw.": "Подключи кошелёк, чтобы запустить или завершить розыгрыш.",
   "Public entry list": "Публичный список участников",
   "People showing up": "Работы участников",
+  "Work submissions are visible to the mission creator only.": "Работы видны только автору задания.",
+  "Submissions: {count}": "Работ: {count}",
   "Send a proposal. Start after selection.": "Отправь предложение. Начинай после выбора автора.",
   "Good work starts with someone.": "Кто-то должен стать первым.",
   "Open submitted post": "Открыть отправленный пост",

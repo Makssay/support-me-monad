@@ -1,4 +1,7 @@
 // Only explicitly configured site origins may appear in SIWE messages.
+export function walletDeploymentAlias(environment?:string,url?:string){
+ return environment==='preview'&&/^[a-z0-9-]+\.vercel\.app$/.test(url||'')?`https://${url}`:'';
+}
 export function walletOrigin(canonical:string, aliases:string, requested?:string){
  const allowed=[canonical,...aliases.split(',')].filter(Boolean).map(value=>{
   const url=new URL(value.trim());
