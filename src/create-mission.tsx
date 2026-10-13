@@ -1,5 +1,5 @@
 import { registerRecoveryDraft } from './deployment-recovery';
-import {missionTemplates, type MissionTemplate} from './mission-templates';
+import {missionTemplates, isTemplateAvailable, type MissionTemplate} from './mission-templates';
 import './mission-templates.css';
 import {PaymentFormat} from './payment-format';
 import {FundingBreakdown} from './mission-experience';
@@ -30,8 +30,9 @@ export default function CreateMission() { useLocale();
  const navigate = useNavigate();
  const [restored] = useState(()=>readRecoveryDraft(config?.chainId,config?.contractAddress));
  const [step, setStep] = useState(restored.step ?? 0);
- const [template,setTemplate]=useState<MissionTemplate | undefined>(() => missionTemplates.find(item => item.id === restored.templateId));
+ const [template,setTemplate]=useState<MissionTemplate | undefined>(() => missionTemplates.find(item => item.id === restored.templateId && isTemplateAvailable(item)));
  function applyTemplate(next:MissionTemplate) {
+  if(!isTemplateAvailable(next))return;
   setTemplate(next);setStep(0);setError('');setCategory(next.category);setMode(next.mode);
   setTitle(t(next.title));setDescription(t(next.brief));setRequirements(t(next.requirements));
   setTargetPost('');setSocial(false);setAIReview(false);setCriteria(parseRubric(DEFAULT_RUBRIC));
@@ -109,7 +110,7 @@ export default function CreateMission() { useLocale();
  }
  async function submit(event: FormEvent<HTMLFormElement>) {
   event.preventDefault(); setError('');
-  if(!template||mode!==Number(template.mode)){setError('Choose an available template.');return;}
+  if(!template||!isTemplateAvailable(template)||mode!==Number(template.mode)){setError('Choose an available template.');return;}
   if (category==='Replies'&&!socialPostId(targetPost)){if(step!==0)changeStep(0);setError('Use a public X post URL for the reply task.');return;}
   if(template.id==='token'&&!community.token){setError('Choose a community requirement.');return;}
   if(template.id==='wallet'&&community.nft!=='list'){setError('Choose a community requirement.');return;}
@@ -170,7 +171,7 @@ export default function CreateMission() { useLocale();
  return <div className="page narrow-page create-page">
   <TransitionLink className="back-link" to="/"><ArrowLeft size={16}/>{t("All missions")}</TransitionLink>
   <div className="page-title"><span className="title-symbol"><Plus size={30}/></span><h1>{t("Ask for a little help.")}</h1><p>{t("A clear brief. A fair reward. Something worth showing up for.")}</p></div>
-  {!template&&<section className="template-picker" aria-labelledby="templates-heading"><div className="template-heading"><div><span className="preview-eyebrow">{t('LESS SETUP. MORE GOOD WORK.')}</span><h2 id="templates-heading">{t('Start with a template')}</h2><p>{t('Pick a goal. The payment format and checks are already set.')}</p></div></div><div className="template-grid">{missionTemplates.map(item=><button type="button" key={item.id} className="template-tile" onClick={()=>applyTemplate(item)}><img src={`/art/templates/${item.id}.webp`} alt="" width={480} height={480}/><span><strong>{t(item.title)}</strong><small>{t(item.summary)}</small></span><ArrowUpRight size={18}/></button>)}<button type="button" className="template-tile template-soon" disabled aria-describedby="builder-soon-description"><img src="/art/templates/builder.webp" alt="" width={480} height={480}/><span><strong>{t("Custom builder")} <b className="soon-badge">SOON</b></strong><small id="builder-soon-description">{t("Your own payment formats and flexible settings. Coming soon.")}</small></span></button></div><p className="template-hint">{t('Templates are editable starting points. Nothing is published or charged when you choose one.')}</p></section>}
+  {!template&&<section className="template-picker" aria-labelledby="templates-heading"><div className="template-heading"><div><span className="preview-eyebrow">{t('LESS SETUP. MORE GOOD WORK.')}</span><h2 id="templates-heading">{t('Start with a template')}</h2><p>{t('Pick a goal. The payment format and checks are already set.')}</p></div></div><div className="template-grid">{missionTemplates.map(item=><button type="button" key={item.id} className={`template-tile ${isTemplateAvailable(item)?'':'template-soon'}`} disabled={!isTemplateAvailable(item)} onClick={()=>applyTemplate(item)}><img src={`/art/templates/${item.id}.webp`} alt="" width={480} height={480}/><span><strong>{t(item.title)} {!isTemplateAvailable(item)&&<b className="soon-badge">SOON</b>}</strong><small>{t(item.summary)}</small></span>{isTemplateAvailable(item)&&<ArrowUpRight size={18}/>}</button>)}<button type="button" className="template-tile template-soon" disabled aria-describedby="builder-soon-description"><img src="/art/templates/builder.webp" alt="" width={480} height={480}/><span><strong>{t("Custom builder")} <b className="soon-badge">SOON</b></strong><small id="builder-soon-description">{t("Your own payment formats and flexible settings. Coming soon.")}</small></span></button></div><p className="template-hint">{t('Templates are editable starting points. Nothing is published or charged when you choose one.')}</p></section>}
   {template&&<div className="selected-template"><img src={`/art/templates/${template.id}.webp`} alt="" width={64} height={64}/><div><small>{t('YOUR TEMPLATE')}</small><strong>{t(template.title)}</strong><span>{t(template.summary)}</span></div><button className="button secondary" type="button" disabled={busy||preparingPublication} onClick={()=>{setTemplate(undefined);changeStep(0);}}>{t('Change template')}</button></div>}
   {!template?null:!address ? <div className="empty"><h3>{t("Make yourself part of it.")}</h3><p>{t("Sign in to create a mission and fund its rewards.")}</p><button className="button primary" onClick={() => setWalletOpen(true)}>{auth ? t("Sign in") : t("Connect wallet")}</button></div> : <div className="form-layout">
    <form id="custom-mission" className="mission-form stepped-form" onSubmit={submit}>

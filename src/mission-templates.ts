@@ -9,3 +9,4 @@ export const missionTemplates = [
  {id:'wallet',title:'Wallet list giveaway',summary:'Upload wallets → verify ownership → random winners',category:'Wallet list',mode:6,brief:'A giveaway for the wallets on our published eligibility list. Verify control of a listed wallet and enter; no reply or creative work is required.',requirements:'Prove control of a wallet on the organizer list. One listed wallet can enter once; rewards go to your Support Me wallet. The eligibility list is fixed when the mission is funded.'}
 ] as const;
 export type MissionTemplate = typeof missionTemplates[number];
+export const isTemplateAvailable = (template: MissionTemplate) => !['feedback','bug'].includes(template.id);
