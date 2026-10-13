@@ -4,13 +4,14 @@ import "./CommunityGate.sol";
 interface IEntropy { function getFeeV2() external view returns(uint256); function getDefaultProvider() external view returns(address); function requestV2() external payable returns(uint64); }
 interface IRewardToken { function balanceOf(address) external view returns(uint256); function transfer(address,uint256) external returns(bool); function transferFrom(address,address,uint256) external returns(bool); }
 /// @notice MON and verified ERC20 escrow. Social admission trusts the disclosed verifier; raffle selection uses Pyth. No admin withdrawal.
-interface ICreationFees {function quote(uint8) external view returns(uint256);function collect(uint256,uint8) external payable;}
+interface ICreationFees {function quote(uint8) external view returns(uint256);function collectFor(uint256,uint8,address) external payable;function quoteFor(address,uint8) external view returns(uint256);}
 abstract contract SupportMeStorage {
  struct TokenMission {address token;uint256 reward;uint16 slots;uint64 deadline;uint32 reviewWindow;Mode mode;uint32 workWindow;bool protectedMode;uint256 pythReserve;uint256 executionReserve;uint8 feeTier;}
 
  CommunityGate public communityGate;
  address public creationFees;
- function creationFee(uint8 tier) public view returns(uint256){return creationFees==address(0)?0:ICreationFees(creationFees).quote(tier);}
+ function creationFee(uint8 tier) public view returns(uint256){return creationFeeFor(msg.sender,tier);}
+ function creationFeeFor(address creator,uint8 tier) public view returns(uint256){return creationFees==address(0)?0:ICreationFees(creationFees).quoteFor(creator,tier);}
  error InvalidParameters();
  enum Status { Pending, Accepted, Rejected, Proposed, Assigned, Expired, NotWinner }
  enum Mode { CreatorChoice, PaidSlot, Selected, BugBounty, ReplyRaffle, CommunityRaffle }

@@ -77,7 +77,18 @@ export default function CreateMission() { useLocale();
  const needsAI = false;
  const forcedX=category==='Replies'||mode===4||(needsAI&&requiresXEvidence({category,socialRequired:false}));
  const requireX=mode!==6&&(social||forcedX);
- const serviceTier=Math.max(feeTier(needsAI,requireX),tierForCommunity(admissionPolicy));const platformFee=(config?.version||0)>=5?parseEther(creationFeeMon(config!.chainId,serviceTier)):0n;
+ const serviceTier=Math.max(feeTier(needsAI,requireX),tierForCommunity(admissionPolicy));const standardPlatformFee=(config?.version||0)>=5?parseEther(creationFeeMon(config!.chainId,serviceTier)):0n;
+ const [walletFee,setWalletFee]=useState<{key:string;wei:bigint}>();
+ const feeKey=`${config?.chainId}:${config?.contractAddress}:${address}:${serviceTier}`;
+ async function quoteWalletFee(){
+  if((config?.version||0)<9)return standardPlatformFee;
+  const iface=new Interface(['function creationFeeFor(address,uint8) view returns(uint256)']);
+  const response=await fetch('/api/rpc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'eth_call',params:[{to:config!.contractAddress,data:iface.encodeFunctionData('creationFeeFor',[address,serviceTier])},'latest']}),signal:AbortSignal.timeout(15000)});
+  const data=await response.json();if(!response.ok||data.error||!data.result)throw new Error('Could not quote the network fee. Nothing was sent. Try again.');
+  return BigInt(iface.decodeFunctionResult('creationFeeFor',data.result)[0]);
+ }
+ useEffect(()=>{let alive=true;if((config?.version||0)>=9&&address)void quoteWalletFee().then(wei=>{if(alive)setWalletFee({key:feeKey,wei});}).catch(()=>{});return()=>{alive=false;};},[feeKey,config?.version]);
+ const platformFee=(config?.version||0)>=9&&walletFee?.key===feeKey?walletFee.wei:standardPlatformFee;
  const totalWeight = criteria.reduce((sum, c) => sum + c.weight, 0);
  let rubricError = '';
  if (needsAI) { try { parseRubric(JSON.stringify(criteria)); } catch (e) { rubricError = (e as Error).message; } }
@@ -111,6 +122,7 @@ export default function CreateMission() { useLocale();
   if (publishing.current || busy) return;
   publishing.current=true;setPreparingPublication(true);
   try {
+   const platformFee=await quoteWalletFee();setWalletFee({key:feeKey,wei:platformFee});
    if (auth && !auth.member?.username) throw new Error('Your X profile is still loading. Please retry shortly.');
    const amount = parseUnits(reward,asset.decimals); const count = Number(slots);
    if (amount <= 0n || !Number.isInteger(count) || count < 1 || count > ([4,5,6].includes(mode)?20:100) || title.trim().length < 5 || !description.trim() || !requirements.trim()) throw new Error('Check the brief, a positive reward, and the number of reward slots.');
