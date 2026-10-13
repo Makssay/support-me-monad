@@ -5,6 +5,7 @@ import { startSnapshotPolling } from './snapshot-polling';
 import { snapshotLoadError } from './snapshot-status';
 import { erc20Abi, type RewardAsset } from '../shared/rewards';
 import { tokenTransferAbi, TokenTransferError, validateTokenTransfer } from './token-transfer';
+import {validateNativeTransfer} from './native-transfer';
 import { createContext, useContext, useEffect, useState, useRef, type ReactNode } from 'react';
 import { BrowserProvider, Contract, formatEther, type Eip1193Provider, type TransactionReceipt } from 'ethers';
 import { prepareMissionTransaction, TransactionPreflightError } from './transaction-preflight';
@@ -136,6 +137,12 @@ export function AppProvider({ children, auth }: { children: ReactNode; auth?: Au
      if (wallet !== selected.current || account !== connected.current) throw new Error('Account changed. Retry.');
      setNotice({ kind: 'pending', text: `Confirm ${label.toLowerCase()} in your wallet.${sponsored ? ' Support Me covers gas.' : ''}` });
      const provider = new BrowserProvider(wallet);
+     const nativeTransfer=method==='sendWalletMON';
+     let native:ReturnType<typeof validateNativeTransfer>|undefined;
+     if(nativeTransfer){
+       if(String(args[2]).toLowerCase()!==account.toLowerCase())throw new TokenTransferError('Account changed. Retry.');
+       native=validateNativeTransfer(account,String(args[0]),String(args[1]),await provider.getBalance(account));
+     }
      const transferring = method === 'sendWalletToken';
      let transfer: ReturnType<typeof validateTokenTransfer> | undefined;
      if (transferring) {
@@ -155,7 +162,7 @@ export function AppProvider({ children, auth }: { children: ReactNode; auth?: Au
      const gateMethod=method==='authorizeCommunity'?'authorize':method==='finalizeCommunity'?'finalize':'requestSnapshot';
      const approving=method==='approveRewardToken';
      if(approving&&!([config.contractAddress,config.aiController].some(s=>s?.toLowerCase()===String(args[1]).toLowerCase())))throw new Error('Invalid token approval spender.');
-     const receipt = await sendMissionTransaction({ contractAddress: transfer?transfer.token:communityMethod?config.communityGate!:approving?String(args[0]):controlled?config.aiController!:config.contractAddress, abi:transfer?tokenTransferAbi:communityMethod?gateAbi:approving?erc20Abi:controlled?aiAbi:undefined, chainId: config.chainId, method:transfer?'transfer':communityMethod?gateMethod:approving?'approve':method==='withdrawAITokenCredit'?'withdrawTokenCredit':method==='withdrawAICredit'?'withdrawCredit':method, args:transfer?[transfer.to,transfer.units]:approving?args.slice(1):args, value,
+     const receipt = await sendMissionTransaction({ nativeTransfer,contractAddress: native?native.to:transfer?transfer.token:communityMethod?config.communityGate!:approving?String(args[0]):controlled?config.aiController!:config.contractAddress, abi:transfer?tokenTransferAbi:communityMethod?gateAbi:approving?erc20Abi:controlled?aiAbi:undefined, chainId: config.chainId, method:transfer?'transfer':communityMethod?gateMethod:approving?'approve':method==='withdrawAITokenCredit'?'withdrawTokenCredit':method==='withdrawAICredit'?'withdrawCredit':method, args:transfer?[transfer.to,transfer.units]:approving?args.slice(1):args, value:native?native.units:value,
        sendSponsored: sponsored ? async tx => { await assertCurrent(); return authWallet!.sendSponsored!(tx); } : undefined,
        preflight: (tx, sponsored) => prepareMissionTransaction(tx, sponsored, {
          balance: () => provider.getBalance(account),

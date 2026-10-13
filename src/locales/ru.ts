@@ -1117,4 +1117,10 @@ export const ru: Record<string, string> = {
   "Previous page": "Предыдущая страница",
   "Next page": "Следующая страница",
   "Showing {from}–{to} of {total}": "{from}–{to} из {total}",
+  "Withdraw funds": "Вывести средства",
+  "MON transfer": "Перевод MON",
+  "MON sent": "MON отправлены",
+  "Enter a positive MON amount with up to 18 decimals.": "Введи положительную сумму MON, не более 18 знаков после запятой.",
+  "The amount exceeds your available MON balance.": "Сумма превышает доступный баланс MON.",
+  "Leave some MON for the network fee. Your wallet shows the fee before you confirm.": "Оставь немного MON на комиссию сети. Кошелёк покажет её перед подтверждением.",
 };

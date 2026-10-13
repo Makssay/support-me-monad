@@ -63,3 +63,5 @@
  .wallet-link-steps li { padding-left:34px; }
  .account-dialog .external-link-heading h2 { font-size:29px; }
 }
+
+.wallet-mon-send{margin-top:18px}.wallet-mon-send>button{min-height:48px}.wallet-mon-send small{color:#b8a6cd;line-height:1.6}.profile-withdraw{margin-top:14px}.wallet-mon-send [role=alert]{color:#f6b9cc}

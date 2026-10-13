@@ -11,6 +11,7 @@ export interface MissionTransactionDependencies {
   abi?: InterfaceAbi;
   args: unknown[];
   value?: bigint;
+  nativeTransfer?: boolean;
   sendSponsored?: (transaction: SponsoredTransaction) => Promise<string>;
   preflight?: (transaction: SponsoredTransaction, sponsored: boolean) => Promise<GasQuote>;
   getSigner: () => Promise<ContractRunner>;
@@ -22,18 +23,20 @@ export interface MissionTransactionDependencies {
 // timed-out sponsored request as a user-paid transaction: it may already be mined.
 export async function sendMissionTransaction(d: MissionTransactionDependencies) {
   if (d.sendSponsored && d.chainId !== CHAIN_ID) throw new Error('Sponsorship is restricted to Monad Testnet.');
-  const transaction = { to: d.contractAddress, data: new Interface(d.abi||abi).encodeFunctionData(d.method, d.args), value: d.value ?? 0n, chainId: d.chainId };
+  const transaction = { to: d.contractAddress, data: d.nativeTransfer ? '0x' : new Interface(d.abi||abi).encodeFunctionData(d.method, d.args), value: d.value ?? 0n, chainId: d.chainId };
   const quote = await d.preflight?.(transaction, !!d.sendSponsored) ?? {};
   let receipt: TransactionReceipt | null;
   if (d.sendSponsored) {
     if (d.chainId !== CHAIN_ID) throw new Error('Sponsorship is restricted to Monad Testnet.');
-    const data = new Interface(d.abi||abi).encodeFunctionData(d.method, d.args);
+    const data = transaction.data;
     const hash = await d.sendSponsored({ to: d.contractAddress, data, value: d.value ?? 0n, chainId: d.chainId });
     d.onSent(hash);
     receipt = await d.waitForReceipt(hash);
   } else {
-    const contract = new Contract(d.contractAddress, d.abi||abi, await d.getSigner());
-    const tx = await contract[d.method](...d.args, { ...quote, ...(d.value === undefined ? {} : { value: d.value }) });
+    const signer=await d.getSigner();
+    if(d.nativeTransfer&&!signer.sendTransaction)throw new Error('Wallet cannot send transactions.');
+    const contract = d.nativeTransfer?undefined:new Contract(d.contractAddress, d.abi||abi, signer);
+    const tx = d.nativeTransfer ? await signer.sendTransaction!({...transaction,...quote}) : await contract![d.method](...d.args, { ...quote, ...(d.value === undefined ? {} : { value: d.value }) });
     d.onSent(tx.hash);
     receipt = await tx.wait(1, 90000);
   }
