@@ -1,6 +1,16 @@
 interface Statement { bind(...args: unknown[]): Statement; first<T>(): Promise<T | null>; all<T>(): Promise<{ results: T[] }>; run(): Promise<{meta:{changes:number}}> }
 interface Env { DB: { prepare(sql: string): Statement; batch(statements: Statement[]): Promise<unknown[]> }; D1_GATEWAY_SECRET: string; SCHEDULER_SECRET: string; APP_ORIGIN: string }
 const json = (value: unknown, status = 200) => Response.json(value, { status, headers: { 'Cache-Control': 'no-store' } });
+// Bound each response, while retaining a single fenced lease across all pages.
+async function readPage(env: Env, after = '') {
+ const rows = (await env.DB.prepare(`WITH candidates AS (
+  SELECT key,value FROM app_records WHERE key>? ORDER BY key LIMIT 65
+ ), sized AS (
+  SELECT key,value,SUM(length(key)+length(value)) OVER (ORDER BY key) AS bytes,
+   ROW_NUMBER() OVER (ORDER BY key) AS position,COUNT(*) OVER () AS total FROM candidates
+ ) SELECT key,value,total FROM sized WHERE position<=64 AND (bytes<=262144 OR position=1) ORDER BY key`).bind(after).all<{key:string;value:string;total:number}>()).results;
+ return { rows:rows.map(({key,value})=>({key,value})), cursor:rows.length && rows.length<rows[0].total ? rows[rows.length-1].key : null };
+}
 async function authorized(request: Request, expected: string) {
  if (!expected) return false;
  const supplied = request.headers.get('Authorization')?.replace(/^Bearer /, '') || '';
@@ -28,6 +38,7 @@ export default {
     const expires = now + 300000;
     const changed=await env.DB.prepare('UPDATE app_lease SET owner=?, expires=? WHERE id=1 AND expires<?').bind(body.owner,expires,now).run();
     if (!changed.meta.changes) return json({error:'Busy'},409);
+    if (body.paginated === true) return json({expires,...await readPage(env)});
     const rows=(await env.DB.prepare('SELECT key,value FROM app_records').all<{key:string;value:string}>()).results;
     if (JSON.stringify(rows).length > 3000000) { await env.DB.prepare('UPDATE app_lease SET expires=0 WHERE id=1 AND owner=?').bind(body.owner).run(); return json({error:'MVP capacity reached'},503); }
     return json({expires,rows});
@@ -35,6 +46,10 @@ export default {
    if (path === '/storage/release') { await env.DB.prepare('UPDATE app_lease SET expires=0 WHERE id=1 AND owner=?').bind(body.owner).run(); return json({ok:true}); }
    const held=await env.DB.prepare('SELECT owner,expires FROM app_lease WHERE id=1').first<{owner:string;expires:number}>();
    if (!held || held.owner !== body.owner || held.expires <= now) return json({error:'Lease expired'},409);
+   if (path === '/storage/page') {
+    if (typeof body.after !== 'string' || body.after.length>1000) return json({error:'Invalid cursor'},400);
+    return json(await readPage(env,body.after));
+   }
    if (path === '/storage/assert') return json({ok:true});
    if (path === '/storage/commit') {
     if (!Array.isArray(body.changes) || body.changes.length > 5000 || body.changes.some((c:any)=>typeof c.key!=='string'||c.key.length>1000||c.value!==null&&(typeof c.value!=='string'||c.value.length>500000))) return json({error:'Invalid changes'},400);

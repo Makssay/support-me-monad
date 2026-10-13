@@ -1,6 +1,7 @@
 import { setWalletOperationPending } from './deployment-recovery';
 import { refreshAfterReceipt } from './refresh-after-receipt';
 import { coalesceLoad } from './coalesce-load';
+import { startSnapshotPolling } from './snapshot-polling';
 import { snapshotLoadError } from './snapshot-status';
 import { erc20Abi, type RewardAsset } from '../shared/rewards';
 import { tokenTransferAbi, TokenTransferError, validateTokenTransfer } from './token-transfer';
@@ -50,7 +51,7 @@ export function AppProvider({ children, auth }: { children: ReactNode; auth?: Au
    }
    await load(); await walletBalance();
  }
- useEffect(() => { void fetch('/api/config').then(r => r.json()).then(setConfig).catch(() => {}); void load(); const id = setInterval(() => { if (!pending.current) void load(); }, 15000); return () => clearInterval(id); }, []);
+ useEffect(() => { void fetch('/api/config').then(r => r.json()).then(setConfig).catch(() => {}); void load(); return startSnapshotPolling(load,()=>!pending.current); }, []);
  useEffect(() => {
    if (auth || !config || selected.current || !window.ethereum || !localStorage.getItem('support.wallet')) return;
    const remembered = localStorage.getItem('support.wallet');

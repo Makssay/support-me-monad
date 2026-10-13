@@ -92,7 +92,18 @@ export async function durableOperation<T>(operation: () => Promise<T>): Promise<
  await before;
  const owner = randomUUID();
  try {
-  const opened = await rpc('/storage/acquire', { owner }); lease = owner; leaseUntil = opened.expires;
+  const opened = await rpc('/storage/acquire', { owner, paginated:true }); lease = owner; leaseUntil = opened.expires;
+  // Older gateways return the complete snapshot without a cursor. New gateways
+  // page under the same lease, so readers cannot observe interleaved writes.
+  let cursor = opened.cursor;
+  let bytes = Buffer.byteLength(JSON.stringify(opened.rows));
+  while (cursor) {
+   assertLease();
+   const page = await rpc('/storage/page', { owner, after:cursor });
+   bytes += Buffer.byteLength(JSON.stringify(page.rows));
+   if (bytes>12000000 || page.cursor && page.cursor<=cursor) throw new Error('Storage capacity reached. Contact support.');
+   opened.rows.push(...page.rows); cursor=page.cursor;
+  }
   const loaded = decodeStores(opened.rows); previous = new Map(opened.rows.map((r: any) => [r.key, r.value]));
   for (const [key, s] of stores) { const next = { ...structuredClone(s.defaults), ...loaded.get(key) }; reconcile(s.data, next); s.dirty = false; }
   try { const result = await operation(); await checkpoint(); return result; }

@@ -7,6 +7,39 @@ import { promisify } from 'node:util';
 import { transformSync } from 'esbuild';
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
 
+test('indexed public reads stay small under 100 readers; paged snapshots exceed 3 MB without losing lease isolation', {timeout:60000},async()=>{
+ const script=transformSync(fs.readFileSync('cloudflare/worker.ts','utf8'),{loader:'ts',format:'esm'}).code;
+ const mf=new Miniflare(convertV4MiniflareOptions({modules:true,script,compatibilityDate:'2026-10-10',d1Databases:['DB'],bindings:{D1_GATEWAY_SECRET:'qa-only-gateway'}}));
+ try {
+  const db=await mf.getD1Database('DB');for(const sql of fs.readFileSync('cloudflare/schema.sql','utf8').split(';').filter(s=>s.trim()))await db.prepare(sql).run();
+  const insert=db.prepare('INSERT INTO app_records(key,value) VALUES(?,?)');
+  for(let i=0;i<2000;i+=100)await db.batch(Array.from({length:100},(_,j)=>insert.bind(JSON.stringify(['.data/private.json','items',String(i+j)]),'0')));
+  for(let i=0;i<20;i++)await insert.bind(JSON.stringify(['.data/large.json','items',String(i)]),JSON.stringify('x'.repeat(200000))).run();
+  const publicKey=JSON.stringify(['.data/public-snapshot.json','time']);await insert.bind(publicKey,'123').run();
+  const sql="SELECT key,value FROM app_records WHERE json_extract(key,'$[0]')='.data/public-snapshot.json'";
+  const plan=await db.prepare('EXPLAIN QUERY PLAN '+sql).all<{detail:string}>();assert.match(JSON.stringify(plan.results),/app_records_scope_idx/);
+  const measured=await db.prepare(sql).all();assert.ok(measured.meta.rows_read<50,'public lookup does not scan 2,021 records');
+  const url=(await mf.ready).origin;
+  const call=(path:string,body:unknown)=>fetch(url+path,{method:'POST',headers:{Authorization:'Bearer qa-only-gateway','Content-Type':'application/json'},body:JSON.stringify(body)});
+  const owner=randomUUID();let page=await (await call('/storage/acquire',{owner,paginated:true})).json() as any;
+  const keys=new Set<string>();let bytes=0,pages=0;
+  for(;;){pages++;const size=Buffer.byteLength(JSON.stringify(page.rows));bytes+=size;assert.ok(size<600000);
+   for(const row of page.rows){assert.ok(!keys.has(row.key));keys.add(row.key);}
+   if(!page.cursor)break;
+   page=await (await call('/storage/page',{owner,after:page.cursor})).json();
+  }
+  assert.equal(keys.size,2021);assert.ok(bytes>3000000);assert.ok(pages>1);
+  const readers=await Promise.all(Array.from({length:100},async()=>{const r=await call('/storage/public-snapshot',{});assert.equal(r.status,200);return r.json() as Promise<any>;}));
+  for(const result of readers){assert.equal(result.busy,true);assert.deepEqual(result.rows,[{key:publicKey,value:'123'}]);}
+  assert.equal((await call('/storage/acquire',{owner:randomUUID(),paginated:true})).status,409);
+  await call('/storage/release',{owner});assert.equal((await call('/storage/page',{owner,after:''})).status,409);
+  const code="import {jsonStore,durableOperation} from './server/persistence.ts';const s=jsonStore('.data/large.json',{items:{}});await durableOperation(async()=>{if(Object.keys(s.data.items).length!==20||Object.values(s.data.items).some(v=>v.length!==200000))throw Error('Paged hydration lost data');s.data.items.extra='saved';s.save();console.log('paged-hydration-ok');});";
+  const child=await promisify(execFile)(process.execPath,['--import','tsx','--input-type=module','-e',code],{env:{...process.env,STORAGE_MODE:'d1',D1_GATEWAY_URL:url,D1_GATEWAY_SECRET:'qa-only-gateway'},windowsHide:true});
+  assert.match(child.stdout,/paged-hydration-ok/);
+  const saved=await db.prepare('SELECT value FROM app_records WHERE key=?').bind(JSON.stringify(['.data/large.json','items','extra'])).first<{value:string}>();assert.equal(saved?.value,'"saved"');
+ } finally {await mf.dispose();}
+});
+
 test('D1 gateway fences writers, persists across cold starts and fails closed without spending', {timeout:60000}, async()=>{
  const script=transformSync(fs.readFileSync('cloudflare/worker.ts','utf8'),{loader:'ts',format:'esm'}).code;
  const mf=new Miniflare(convertV4MiniflareOptions({modules:true,script,compatibilityDate:'2026-10-10',d1Databases:['DB'],bindings:{D1_GATEWAY_SECRET:'qa-only-gateway',SCHEDULER_SECRET:'qa-only-scheduler',APP_ORIGIN:'https://example.invalid'}}));
